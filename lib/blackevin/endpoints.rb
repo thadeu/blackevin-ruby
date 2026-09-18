@@ -8,11 +8,11 @@ module Blackevin
   # was given, because a dev or self-hosted node serves both from one origin.
   # Production serves them from two names, so the default never derives.
   module Endpoints
-    DEFAULT_WS = "wss://ws.blackevin.com"
-    DEFAULT_REST = "https://api.blackevin.com"
+    DEFAULT_WS = 'wss://ws.blackevin.com'
+    DEFAULT_REST = 'https://api.blackevin.com'
 
-    ENV_WS = "BLACKEVIN_ENDPOINT"
-    ENV_REST = "BLACKEVIN_REST_ENDPOINT"
+    ENV_WS = 'BLACKEVIN_ENDPOINT'
+    ENV_REST = 'BLACKEVIN_REST_ENDPOINT'
 
     Resolved = Struct.new(:endpoint, :rest_endpoint, keyword_init: true)
 
@@ -26,13 +26,13 @@ module Blackevin
       explicit_ws = present(endpoint) || present(env[ENV_WS])
 
       rest = present(rest_endpoint) ||
-        present(env[ENV_REST]) ||
-        (explicit_ws ? derive_rest(explicit_ws) : DEFAULT_REST)
+             present(env[ENV_REST]) ||
+             (explicit_ws ? derive_rest(explicit_ws) : DEFAULT_REST)
 
       Resolved.new(endpoint: explicit_ws || DEFAULT_WS, rest_endpoint: rest)
     end
 
-    def derive_rest(ws_endpoint) = ws_endpoint.sub(/\Aws/i, "http").delete_suffix("/")
+    def derive_rest(ws_endpoint) = ws_endpoint.sub(/\Aws/i, 'http').delete_suffix('/')
 
     def present(value) = value.to_s.strip.then { _1.empty? ? nil : _1 }
   end

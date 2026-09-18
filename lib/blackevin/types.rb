@@ -5,11 +5,11 @@ module Blackevin
   Message = Struct.new(:channel, :name, :data, :connection_id, :timestamp, keyword_init: true) do
     def self.from_h(hash)
       new(
-        channel: hash["channel"],
-        name: hash["name"],
-        data: hash["data"],
-        connection_id: hash["connectionId"],
-        timestamp: hash["timestamp"]
+        channel: hash['channel'],
+        name: hash['name'],
+        data: hash['data'],
+        connection_id: hash['connectionId'],
+        timestamp: hash['timestamp']
       )
     end
 
@@ -21,10 +21,10 @@ module Blackevin
   PresenceMember = Struct.new(:client_id, :connection_id, :data, :updated_at, keyword_init: true) do
     def self.from_h(hash)
       new(
-        client_id: hash["clientId"],
-        connection_id: hash["connectionId"],
-        data: hash["data"],
-        updated_at: hash["updatedAt"]
+        client_id: hash['clientId'],
+        connection_id: hash['connectionId'],
+        data: hash['data'],
+        updated_at: hash['updatedAt']
       )
     end
   end
@@ -33,12 +33,12 @@ module Blackevin
   PresenceEvent = Struct.new(:channel, :action, :client_id, :connection_id, :data, :timestamp, keyword_init: true) do
     def self.from_h(hash)
       new(
-        channel: hash["channel"],
-        action: hash["action"],
-        client_id: hash["clientId"],
-        connection_id: hash["connectionId"],
-        data: hash["data"],
-        timestamp: hash["timestamp"]
+        channel: hash['channel'],
+        action: hash['action'],
+        client_id: hash['clientId'],
+        connection_id: hash['connectionId'],
+        data: hash['data'],
+        timestamp: hash['timestamp']
       )
     end
 
@@ -51,11 +51,11 @@ module Blackevin
   Queue = Struct.new(:id, :account_id, :name, :max_length, :enabled, keyword_init: true) do
     def self.from_h(hash)
       new(
-        id: hash["id"],
-        account_id: hash["accountId"],
-        name: hash["name"],
-        max_length: hash["maxLength"],
-        enabled: hash["enabled"]
+        id: hash['id'],
+        account_id: hash['accountId'],
+        name: hash['name'],
+        max_length: hash['maxLength'],
+        enabled: hash['enabled']
       )
     end
 
@@ -66,12 +66,12 @@ module Blackevin
   QueueRule = Struct.new(:id, :account_id, :queue_name, :source_pattern, :filter, :enabled, keyword_init: true) do
     def self.from_h(hash)
       new(
-        id: hash["id"],
-        account_id: hash["accountId"],
-        queue_name: hash["queueName"],
-        source_pattern: hash["sourcePattern"],
-        filter: hash["filter"],
-        enabled: hash["enabled"]
+        id: hash['id'],
+        account_id: hash['accountId'],
+        queue_name: hash['queueName'],
+        source_pattern: hash['sourcePattern'],
+        filter: hash['filter'],
+        enabled: hash['enabled']
       )
     end
   end

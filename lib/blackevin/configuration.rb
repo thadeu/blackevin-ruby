@@ -10,7 +10,7 @@ module Blackevin
   # Nothing here is required: with +BLACKEVIN_KEY+ in the environment,
   # {Blackevin.rest} works unconfigured.
   class Configuration
-    ENV_KEY = "BLACKEVIN_KEY"
+    ENV_KEY = 'BLACKEVIN_KEY'
 
     # @return [String, nil] the full API key, +secret.keyId+
     attr_writer :key

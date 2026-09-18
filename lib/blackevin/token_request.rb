@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "json"
-require "openssl"
+require 'json'
+require 'openssl'
 
 module Blackevin
   # What your server hands a browser instead of the API key: signed, scoped to a
@@ -17,13 +17,13 @@ module Blackevin
     SIGNED_FIELDS = %i[key_name ttl capability client_id timestamp nonce].freeze
 
     WIRE_NAMES = {
-      key_name: "keyName",
-      ttl: "ttl",
-      capability: "capability",
-      client_id: "clientId",
-      timestamp: "timestamp",
-      nonce: "nonce",
-      mac: "mac"
+      key_name: 'keyName',
+      ttl: 'ttl',
+      capability: 'capability',
+      client_id: 'clientId',
+      timestamp: 'timestamp',
+      nonce: 'nonce',
+      mac: 'mac'
     }.freeze
 
     attr_reader :key_name, :ttl, :capability, :client_id, :timestamp, :nonce, :mac
@@ -63,9 +63,9 @@ module Blackevin
     # @param secret [String] the secret half of the API key
     # @return [Blackevin::TokenRequest] a copy carrying the MAC
     def sign(secret)
-      digest = OpenSSL::HMAC.digest("SHA256", secret, signing_text)
+      digest = OpenSSL::HMAC.digest('SHA256', secret, signing_text)
 
-      self.class.new(**attributes, mac: [digest].pack("m0"))
+      self.class.new(**attributes, mac: [digest].pack('m0'))
     end
 
     # The wire shape: camelCase keys, absent fields omitted.

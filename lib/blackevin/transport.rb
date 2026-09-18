@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "net/http"
-require "openssl"
-require "uri"
+require 'net/http'
+require 'openssl'
+require 'uri'
 
 module Blackevin
   # One HTTP exchange, as the transport sees it.
@@ -26,11 +26,11 @@ module Blackevin
     ].freeze
 
     VERBS = {
-      "GET" => Net::HTTP::Get,
-      "POST" => Net::HTTP::Post,
-      "PUT" => Net::HTTP::Put,
-      "PATCH" => Net::HTTP::Patch,
-      "DELETE" => Net::HTTP::Delete
+      'GET' => Net::HTTP::Get,
+      'POST' => Net::HTTP::Post,
+      'PUT' => Net::HTTP::Put,
+      'PATCH' => Net::HTTP::Patch,
+      'DELETE' => Net::HTTP::Delete
     }.freeze
 
     # @param open_timeout [Numeric] seconds to wait for the connection
@@ -68,7 +68,7 @@ module Blackevin
     def connection(uri)
       http = Net::HTTP.new(uri.host, uri.port)
 
-      http.use_ssl = uri.scheme == "https"
+      http.use_ssl = uri.scheme == 'https'
       http.open_timeout = @open_timeout
       http.read_timeout = @read_timeout
       http.write_timeout = @read_timeout

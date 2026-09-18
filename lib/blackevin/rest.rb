@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "json"
+require 'json'
 
 module Blackevin
   # The REST client: no socket, no reconnection, no state beyond its options.
@@ -41,7 +41,7 @@ module Blackevin
     # @param nonce [#call] returns a fresh nonce; injected for tests
     # @param env [#[]] where the endpoint variables are read from
     def initialize(key: nil, token: nil, rest_endpoint: nil, endpoint: nil, open_timeout: 5, read_timeout: 10,
-      transport: nil, clock: nil, nonce: nil, env: ENV)
+                   transport: nil, clock: nil, nonce: nil, env: ENV)
       @key = key
       @token = token
       @rest_endpoint = Endpoints.resolve(endpoint: endpoint, rest_endpoint: rest_endpoint, env: env).rest_endpoint
@@ -56,7 +56,7 @@ module Blackevin
     # @return [Blackevin::ApiKey]
     # @raise [Blackevin::ConfigurationError] when no key was given, or it is malformed
     def api_key
-      raise ConfigurationError, "this call needs the API key: pass key: or set BLACKEVIN_KEY" if @key.to_s.strip.empty?
+      raise ConfigurationError, 'this call needs the API key: pass key: or set BLACKEVIN_KEY' if @key.to_s.strip.empty?
 
       ApiKey.parse(@key)
     end
@@ -69,16 +69,16 @@ module Blackevin
       return "Bearer #{@token}" if @token
       return nil if @key.nil?
 
-      "Basic #{[@key].pack("m0")}"
+      "Basic #{[@key].pack('m0')}"
     end
 
     # @api private
     def request(what, method, path, query: nil, body: nil, authorize: true)
-      headers = {"accept" => "application/json", "user-agent" => USER_AGENT}
+      headers = { 'accept' => 'application/json', 'user-agent' => USER_AGENT }
       authorization = authorize ? authorization_header : nil
 
-      headers["authorization"] = authorization if authorization
-      headers["content-type"] = "application/json" if body
+      headers['authorization'] = authorization if authorization
+      headers['content-type'] = 'application/json' if body
 
       response = @transport.call(
         Request.new(method: method, url: url_for(path, query), headers: headers, body: body && JSON.generate(body))
@@ -95,7 +95,7 @@ module Blackevin
     # which the node reads as a literal plus sign.
     #
     # @api private
-    def self.escape(segment) = segment.to_s.b.gsub(/[^A-Za-z0-9\-._~]/) { format("%%%02X", _1.ord) }
+    def self.escape(segment) = segment.to_s.b.gsub(/[^A-Za-z0-9\-._~]/) { format('%%%02X', _1.ord) }
 
     def inspect = "#<Blackevin::Rest rest_endpoint=#{rest_endpoint.inspect}>"
 

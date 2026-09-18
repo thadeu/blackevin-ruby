@@ -17,7 +17,7 @@ module Blackevin
 
     config.blackevin = ActiveSupport::OrderedOptions.new
 
-    initializer "blackevin.configure" do |app|
+    initializer 'blackevin.configure' do |app|
       options = app.config.blackevin
       credentials_key = app.credentials.dig(:blackevin, :key) if app.respond_to?(:credentials)
 

@@ -11,11 +11,11 @@ module Blackevin
     # @param raw [String] the key as copied from the console
     # @raise [Blackevin::ConfigurationError] when it is not +secret.keyId+
     def self.parse(raw)
-      case raw.to_s.strip.rpartition(".")
-      in [secret, ".", key_name] unless secret.empty? || key_name.empty?
+      case raw.to_s.strip.rpartition('.')
+      in [secret, '.', key_name] unless secret.empty? || key_name.empty?
         new(key_name, secret)
       else
-        raise ConfigurationError, "malformed API key: expected secret.keyId"
+        raise ConfigurationError, 'malformed API key: expected secret.keyId'
       end
     end
 

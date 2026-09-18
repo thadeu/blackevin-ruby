@@ -9,12 +9,12 @@ module Blackevin
     # @return [Blackevin::TokenDetails]
     def self.from_h(hash)
       new(
-        token: hash["token"],
-        key_name: hash["keyName"],
-        issued: hash["issued"],
-        expires: hash["expires"],
-        capability: hash["capability"],
-        client_id: hash["clientId"]
+        token: hash['token'],
+        key_name: hash['keyName'],
+        issued: hash['issued'],
+        expires: hash['expires'],
+        capability: hash['capability'],
+        client_id: hash['clientId']
       )
     end
 
@@ -38,12 +38,12 @@ module Blackevin
     # The wire shape, as the node sent it.
     def to_h
       {
-        "token" => token,
-        "keyName" => key_name,
-        "issued" => issued,
-        "expires" => expires,
-        "capability" => capability,
-        "clientId" => client_id
+        'token' => token,
+        'keyName' => key_name,
+        'issued' => issued,
+        'expires' => expires,
+        'capability' => capability,
+        'clientId' => client_id
       }.compact
     end
 
@@ -54,7 +54,7 @@ module Blackevin
     # Pattern matching, with the Ruby names. The token itself is left out on
     # purpose: a pattern's bindings end up in logs more easily than a reader.
     def deconstruct_keys(_keys)
-      {key_name: key_name, issued: issued, expires: expires, capability: capability, client_id: client_id}
+      { key_name: key_name, issued: issued, expires: expires, capability: capability, client_id: client_id }
     end
 
     # The token is a credential; keep it out of logs.

@@ -1,20 +1,20 @@
 # frozen_string_literal: true
 
-require_relative "blackevin/version"
-require_relative "blackevin/errors"
-require_relative "blackevin/api_key"
-require_relative "blackevin/endpoints"
-require_relative "blackevin/token_request"
-require_relative "blackevin/token_details"
-require_relative "blackevin/types"
-require_relative "blackevin/transport"
-require_relative "blackevin/configuration"
-require_relative "blackevin/rest"
-require_relative "blackevin/rest/auth"
-require_relative "blackevin/rest/channels"
-require_relative "blackevin/rest/clients"
-require_relative "blackevin/rest/queues"
-require_relative "blackevin/token_endpoint"
+require_relative 'blackevin/version'
+require_relative 'blackevin/errors'
+require_relative 'blackevin/api_key'
+require_relative 'blackevin/endpoints'
+require_relative 'blackevin/token_request'
+require_relative 'blackevin/token_details'
+require_relative 'blackevin/types'
+require_relative 'blackevin/transport'
+require_relative 'blackevin/configuration'
+require_relative 'blackevin/rest'
+require_relative 'blackevin/rest/auth'
+require_relative 'blackevin/rest/channels'
+require_relative 'blackevin/rest/clients'
+require_relative 'blackevin/rest/queues'
+require_relative 'blackevin/token_endpoint'
 
 # Server-side SDK for Blackevin: sign token requests, publish, read history and
 # presence, manage queues. Standard library only.
@@ -60,4 +60,4 @@ module Blackevin
   end
 end
 
-require_relative "blackevin/railtie" if defined?(Rails::Railtie)
+require_relative 'blackevin/railtie' if defined?(Rails::Railtie)
