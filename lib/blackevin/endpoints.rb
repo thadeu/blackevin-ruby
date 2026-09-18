@@ -26,8 +26,8 @@ module Blackevin
       explicit_ws = present(endpoint) || present(env[ENV_WS])
 
       rest = present(rest_endpoint) ||
-             present(env[ENV_REST]) ||
-             (explicit_ws ? derive_rest(explicit_ws) : DEFAULT_REST)
+        present(env[ENV_REST]) ||
+        (explicit_ws ? derive_rest(explicit_ws) : DEFAULT_REST)
 
       Resolved.new(endpoint: explicit_ws || DEFAULT_WS, rest_endpoint: rest)
     end

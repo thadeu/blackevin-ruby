@@ -41,14 +41,20 @@ docker run --rm -v "$PWD":/src:ro ruby:3.0 bash -c \
 
 ## Style
 
-Standard only (`bundle exec standardrb`). No `.rubocop.yml`, no `rubocop` command: RuboCop is in the bundle only because Standard is built on it. `.vscode/settings.json` points Ruby LSP at Standard, which otherwise picks RuboCop by itself. Blank lines between blocks of different
+Ruby Standard Style plus one house rule: **single quotes, double only for
+interpolation or an escape**. Standard refuses to have a rule overridden, so the
+linter is RuboCop running Standard's ruleset with that one exception — see
+`.rubocop.yml`. `bundle exec rubocop` to lint, `-a` to fix. There is no
+`.standard.yml` and nothing runs `standardrb`: it would demand double quotes.
+Editors format through the same `.rubocop.yml`, so save and CI cannot disagree.
+Add no other rule to that file. Blank lines between blocks of different
 responsibility. Comments only as YARD documentation on public API, or where a
 wire rule would otherwise look like a mistake.
 
 ## Commands
 
 ```sh
-bundle exec rake          # rspec + standard
+bundle exec rake          # rspec + rubocop
 bundle exec rspec
 bundle exec rake contract:sync
 ```

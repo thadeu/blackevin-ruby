@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-require "json"
-require "securerandom"
+require 'json'
+require 'securerandom'
 
 module Blackevin
   class Rest
     # Token requests: signing one locally, and exchanging one for a token.
     class Auth
       DEFAULT_TTL_MS = 3_600_000
-      DEFAULT_CAPABILITY = {"*" => %w[subscribe publish presence history]}.freeze
+      DEFAULT_CAPABILITY = {'*' => %w[subscribe publish presence history]}.freeze
 
       def initialize(rest, clock: nil, nonce: nil)
         @rest = rest
@@ -60,9 +60,9 @@ module Blackevin
           in Hash => hash then TokenRequest.from_h(hash).to_h
           else raise ConfigurationError, "request_token takes a TokenRequest or a Hash, got #{token_request.class}"
           end
-        path = "/keys/#{Rest.escape(wire.fetch("keyName"))}/requestToken"
+        path = "/keys/#{Rest.escape(wire.fetch('keyName'))}/requestToken"
 
-        TokenDetails.from_h(@rest.request("requestToken", "POST", path, body: wire, authorize: false))
+        TokenDetails.from_h(@rest.request('requestToken', 'POST', path, body: wire, authorize: false))
       end
 
       private

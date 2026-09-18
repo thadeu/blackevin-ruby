@@ -17,11 +17,11 @@ module Blackevin
       def disconnect(client_id)
         client_id = client_id.to_s
 
-        raise ConfigurationError, "disconnect needs a client_id" if client_id.empty?
+        raise ConfigurationError, 'disconnect needs a client_id' if client_id.empty?
 
         path = "/api/clients/#{Rest.escape(client_id)}/connections/close"
 
-        @rest.request("disconnect", "POST", path)["closed"].to_i
+        @rest.request('disconnect', 'POST', path)['closed'].to_i
       end
     end
   end

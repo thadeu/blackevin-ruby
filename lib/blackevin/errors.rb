@@ -33,7 +33,7 @@ module Blackevin
     #   in {status_code: 401 | 403} then rotate_key
     #   in {status_code: nil} then retry_later
     #   end
-    def deconstruct_keys(_keys) = { status_code: status_code, reason: reason, message: message }
+    def deconstruct_keys(_keys) = {status_code: status_code, reason: reason, message: message}
 
     # Builds the error for a non-2xx response, keeping the server's sentence.
     #
@@ -48,14 +48,14 @@ module Blackevin
       parsed = parse(body)
 
       detail = case parsed
-               in { error: String => sentence } unless sentence.empty? then sentence
-               else status
-               end
+      in {error: String => sentence} unless sentence.empty? then sentence
+      else status
+      end
 
       reason = case parsed
-               in { reason: String => slug } then slug
-               else nil
-               end
+      in {reason: String => slug} then slug
+      else nil
+      end
 
       new("#{what} failed: #{detail}", status, reason)
     end

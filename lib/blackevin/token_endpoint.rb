@@ -43,12 +43,12 @@ module Blackevin
     # @return [Array(Integer, Hash, Array<String>)]
     def call(env)
       unless ALLOWED_METHODS.include?(env['REQUEST_METHOD'])
-        return respond(405, { 'error' => 'method not allowed' }, 'allow' => ALLOWED_METHODS.join(', '))
+        return respond(405, {'error' => 'method not allowed'}, 'allow' => ALLOWED_METHODS.join(', '))
       end
 
       case @identify.call(env)
       in nil | false
-        respond(401, { 'error' => 'unauthorized' })
+        respond(401, {'error' => 'unauthorized'})
       in Hash => params
         respond(200, (@rest || Blackevin.rest).auth.create_token_request(**params.transform_keys(&:to_sym)).to_h)
       in other

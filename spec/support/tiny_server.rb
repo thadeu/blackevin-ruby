@@ -1,20 +1,20 @@
 # frozen_string_literal: true
 
-require "socket"
+require 'socket'
 
 # One canned HTTP response on a real socket, so the Net::HTTP transport is
 # exercised on the wire without any gem: WEBrick left the standard library.
 class TinyServer
   attr_reader :port, :received
 
-  def initialize(status: 200, body: "{}", delay: 0)
-    @server = TCPServer.new("127.0.0.1", 0)
+  def initialize(status: 200, body: '{}', delay: 0)
+    @server = TCPServer.new('127.0.0.1', 0)
     @port = @server.addr[1]
-    @received = +""
+    @received = +''
 
     @thread = Thread.new do
       client = @server.accept
-      headers = +""
+      headers = +''
 
       headers << client.readline until headers.end_with?("\r\n\r\n")
 

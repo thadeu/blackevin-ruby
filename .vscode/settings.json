@@ -1,6 +1,6 @@
 {
-  "rubyLsp.formatter": "standard",
-  "rubyLsp.linters": ["standard"],
+  "rubyLsp.formatter": "rubocop",
+  "rubyLsp.linters": ["rubocop"],
   "[ruby]": {
     "editor.defaultFormatter": "Shopify.ruby-lsp",
     "editor.formatOnSave": true

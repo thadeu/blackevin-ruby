@@ -15,9 +15,9 @@ module Blackevin
       # @return [Array<Blackevin::Queue>]
       # @raise [Blackevin::Error]
       def list(all: false)
-        body = @rest.request("list queues", "GET", "/api/queues", query: all ? {"all" => "1"} : nil)
+        body = @rest.request('list queues', 'GET', '/api/queues', query: all ? {'all' => '1'} : nil)
 
-        Array(body["queues"]).map { Queue.from_h(_1) }
+        Array(body['queues']).map { Queue.from_h(_1) }
       end
 
       # Creates a queue, or edits the one already holding this name. Only a new
@@ -29,10 +29,10 @@ module Blackevin
       # @return [Blackevin::Queue]
       # @raise [Blackevin::Error] with reason "queue_limit" at the plan's ceiling
       def upsert(name:, max_length: nil, enabled: true)
-        body = {"name" => name.to_s, "enabled" => enabled}
-        body["maxLength"] = max_length unless max_length.nil?
+        body = {'name' => name.to_s, 'enabled' => enabled}
+        body['maxLength'] = max_length unless max_length.nil?
 
-        Queue.from_h(@rest.request("upsert queue", "POST", "/api/queues", body: body).fetch("queue"))
+        Queue.from_h(@rest.request('upsert queue', 'POST', '/api/queues', body: body).fetch('queue'))
       end
 
       alias_method :create, :upsert
@@ -48,13 +48,13 @@ module Blackevin
       def update(id, **changes)
         unknown = changes.except(:enabled, :max_length).keys
 
-        raise ArgumentError, "unknown keywords: #{unknown.join(", ")}" unless unknown.empty?
+        raise ArgumentError, "unknown keywords: #{unknown.join(', ')}" unless unknown.empty?
 
         body = {}
-        body["enabled"] = changes[:enabled] if changes.key?(:enabled)
-        body["maxLength"] = changes[:max_length] if changes.key?(:max_length)
+        body['enabled'] = changes[:enabled] if changes.key?(:enabled)
+        body['maxLength'] = changes[:max_length] if changes.key?(:max_length)
 
-        Queue.from_h(@rest.request("update queue", "PATCH", queue_path(id), body: body).fetch("queue"))
+        Queue.from_h(@rest.request('update queue', 'PATCH', queue_path(id), body: body).fetch('queue'))
       end
 
       # Deletes the queue and whatever is waiting in it.
@@ -63,16 +63,16 @@ module Blackevin
       # @return [String] the name of the deleted queue
       # @raise [Blackevin::Error]
       def delete(id)
-        @rest.request("delete queue", "DELETE", queue_path(id))["deleted"]
+        @rest.request('delete queue', 'DELETE', queue_path(id))['deleted']
       end
 
       # @param id [String] the queue's id
       # @return [Array<Blackevin::QueueRule>]
       # @raise [Blackevin::Error]
       def rules(id)
-        body = @rest.request("list queue rules", "GET", "#{queue_path(id)}/rules")
+        body = @rest.request('list queue rules', 'GET', "#{queue_path(id)}/rules")
 
-        Array(body["rules"]).map { QueueRule.from_h(_1) }
+        Array(body['rules']).map { QueueRule.from_h(_1) }
       end
 
       # Copies messages from channels matching the pattern into the queue.
@@ -83,10 +83,10 @@ module Blackevin
       # @return [Blackevin::QueueRule]
       # @raise [Blackevin::Error]
       def add_rule(id, source_pattern:, filter: nil)
-        body = {"sourcePattern" => source_pattern.to_s}
-        body["filter"] = filter unless filter.nil?
+        body = {'sourcePattern' => source_pattern.to_s}
+        body['filter'] = filter unless filter.nil?
 
-        QueueRule.from_h(@rest.request("add queue rule", "POST", "#{queue_path(id)}/rules", body: body).fetch("rule"))
+        QueueRule.from_h(@rest.request('add queue rule', 'POST', "#{queue_path(id)}/rules", body: body).fetch('rule'))
       end
 
       # Stops the copies at the source. Messages already enqueued stay.
@@ -96,7 +96,7 @@ module Blackevin
       # @return [true]
       # @raise [Blackevin::Error]
       def delete_rule(id, rule_id)
-        @rest.request("delete queue rule", "DELETE", "#{queue_path(id)}/rules/#{Rest.escape(rule_id)}")
+        @rest.request('delete queue rule', 'DELETE', "#{queue_path(id)}/rules/#{Rest.escape(rule_id)}")
 
         true
       end
@@ -104,7 +104,7 @@ module Blackevin
       private
 
       def queue_path(id)
-        raise ConfigurationError, "a queue is addressed by its id" if id.to_s.empty?
+        raise ConfigurationError, 'a queue is addressed by its id' if id.to_s.empty?
 
         "/api/queues/#{Rest.escape(id)}"
       end

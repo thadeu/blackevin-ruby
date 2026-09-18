@@ -41,7 +41,7 @@ module Blackevin
     # @param nonce [#call] returns a fresh nonce; injected for tests
     # @param env [#[]] where the endpoint variables are read from
     def initialize(key: nil, token: nil, rest_endpoint: nil, endpoint: nil, open_timeout: 5, read_timeout: 10,
-                   transport: nil, clock: nil, nonce: nil, env: ENV)
+      transport: nil, clock: nil, nonce: nil, env: ENV)
       @key = key
       @token = token
       @rest_endpoint = Endpoints.resolve(endpoint: endpoint, rest_endpoint: rest_endpoint, env: env).rest_endpoint
@@ -74,7 +74,7 @@ module Blackevin
 
     # @api private
     def request(what, method, path, query: nil, body: nil, authorize: true)
-      headers = { 'accept' => 'application/json', 'user-agent' => USER_AGENT }
+      headers = {'accept' => 'application/json', 'user-agent' => USER_AGENT}
       authorization = authorize ? authorization_header : nil
 
       headers['authorization'] = authorization if authorization

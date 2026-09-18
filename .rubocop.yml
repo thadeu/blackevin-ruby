@@ -1,0 +1,34 @@
+# Ruby Standard Style, plus ONE house rule: single quotes, double only when the
+# string interpolates or needs an escape.
+#
+# Standard refuses to let its own rules be overridden (`.standard.yml` and its
+# `extend_config` both ignore this), so the linter is RuboCop running Standard's
+# ruleset with that single exception:
+#
+#   bundle exec rubocop        # lint
+#   bundle exec rubocop -a     # fix
+#
+# Editors that format through RuboCop (Neovim, VS Code, Cursor) read this same
+# file, so format-on-save and CI cannot disagree. Add no other rule here: every
+# other style decision belongs to Standard.
+require:
+  - standard
+
+inherit_gem:
+  standard: config/base.yml
+
+AllCops:
+  TargetRubyVersion: 3.0
+  SuggestExtensions: false
+  NewCops: disable
+  Exclude:
+    - 'vendor/**/*'
+
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: single_quotes
+
+Style/QuotedSymbols:
+  EnforcedStyle: single_quotes

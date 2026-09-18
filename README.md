@@ -224,7 +224,7 @@ end
 
 ```sh
 bundle install
-bundle exec rake            # rspec + standard
+bundle exec rake            # rspec + rubocop (Standard rules, single quotes)
 bundle exec rake contract:sync   # refresh spec/contract from ../blackevin/spec
 ```
 

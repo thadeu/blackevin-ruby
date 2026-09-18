@@ -54,7 +54,7 @@ module Blackevin
     # Pattern matching, with the Ruby names. The token itself is left out on
     # purpose: a pattern's bindings end up in logs more easily than a reader.
     def deconstruct_keys(_keys)
-      { key_name: key_name, issued: issued, expires: expires, capability: capability, client_id: client_id }
+      {key_name: key_name, issued: issued, expires: expires, capability: capability, client_id: client_id}
     end
 
     # The token is a credential; keep it out of logs.

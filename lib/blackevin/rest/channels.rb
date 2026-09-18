@@ -15,7 +15,7 @@ module Blackevin
       def get(name)
         name = name.to_s
 
-        raise ConfigurationError, "a channel needs a name" if name.empty?
+        raise ConfigurationError, 'a channel needs a name' if name.empty?
 
         @mutex.synchronize { @channels[name] ||= Channel.new(@rest, name) }
       end
@@ -49,10 +49,10 @@ module Blackevin
       # @return [true]
       # @raise [Blackevin::Error]
       def publish(event, data = nil)
-        body = {"name" => event.to_s}
-        body["data"] = data unless data.nil?
+        body = {'name' => event.to_s}
+        body['data'] = data unless data.nil?
 
-        @rest.request("publish", "POST", "#{@path}/publish", body: body)
+        @rest.request('publish', 'POST', "#{@path}/publish", body: body)
 
         true
       end
@@ -63,9 +63,9 @@ module Blackevin
       # @return [Array<Blackevin::Message>]
       # @raise [Blackevin::Error]
       def history(limit: DEFAULT_HISTORY_LIMIT)
-        body = @rest.request("history", "GET", "#{@path}/history", query: {"limit" => limit})
+        body = @rest.request('history', 'GET', "#{@path}/history", query: {'limit' => limit})
 
-        Array(body["messages"]).map { Message.from_h(_1) }
+        Array(body['messages']).map { Message.from_h(_1) }
       end
 
       def inspect = "#<Blackevin::Rest::Channel name=#{name.inspect}>"
@@ -83,9 +83,9 @@ module Blackevin
       # @return [Array<Blackevin::PresenceMember>]
       # @raise [Blackevin::Error]
       def get
-        body = @rest.request("presence get", "GET", @path)
+        body = @rest.request('presence get', 'GET', @path)
 
-        Array(body["members"]).map { PresenceMember.from_h(_1) }
+        Array(body['members']).map { PresenceMember.from_h(_1) }
       end
 
       # Past enter, leave and update events, newest first.
@@ -94,9 +94,9 @@ module Blackevin
       # @return [Array<Blackevin::PresenceEvent>]
       # @raise [Blackevin::Error]
       def history(limit: Channel::DEFAULT_HISTORY_LIMIT)
-        body = @rest.request("presence history", "GET", "#{@path}/history", query: {"limit" => limit})
+        body = @rest.request('presence history', 'GET', "#{@path}/history", query: {'limit' => limit})
 
-        Array(body["events"]).map { PresenceEvent.from_h(_1) }
+        Array(body['events']).map { PresenceEvent.from_h(_1) }
       end
     end
   end
