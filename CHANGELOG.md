@@ -2,6 +2,10 @@
 
 ## 0.1.0
 
+- Remove lint from CI
+
+## 0.1.0
+
 First release. Server-side REST client, standard library only.
 
 - `Blackevin::Rest` — `auth.create_token_request` (local HMAC signing), `auth.request_token`,
