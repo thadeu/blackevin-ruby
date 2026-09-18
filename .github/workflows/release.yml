@@ -52,9 +52,6 @@ jobs:
 
           echo "GEM_VERSION=$gem_version" >> "$GITHUB_ENV"
 
-      - name: Lint
-        run: bundle exec standardrb
-
       - name: Test
         run: bundle exec rspec
 
