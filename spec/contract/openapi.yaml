@@ -1,0 +1,836 @@
+openapi: 3.1.0
+info:
+  title: Blackevin REST API
+  version: 0.1.0
+  summary: The HTTP surface of a Blackevin node.
+  description: |
+    What an SDK needs in order to talk to Blackevin without a socket: exchange a
+    TokenRequest, publish, read history, read presence, and manage queues.
+
+    This file is the contract every server-side SDK is written against. The
+    companion `fixtures/` directory pins the parts a schema cannot: the exact
+    bytes a TokenRequest MAC is computed over, how a key splits, how a channel
+    name is encoded into a path.
+
+    **Authentication.** `Basic` carries the whole API key, `secret.keyId`,
+    base64-encoded as one string — there is no username/password split. `Bearer`
+    carries a token issued by `requestToken`. A key acts as the account; a token
+    acts as one client, inside the capability it was issued with.
+
+    **Errors.** Every refusal is `{ "error": "<sentence>" }`, plus a stable
+    `reason` slug when the refusal is a plan ceiling (always a 429). Branch on
+    `reason` and the status, never on the sentence.
+
+    **Channel names in paths** are percent-encoded so they decode to the exact
+    name. A space is `%20`, never `+`; a slash inside a name is `%2F`.
+
+    Operations tagged `console` exist for the Blackevin operator console. They are
+    documented so the file is a complete account of the router, and they are not
+    part of what an SDK should expose.
+servers:
+  - url: https://api.blackevin.com
+    description: Production
+  - url: http://localhost:3000
+    description: A dev or self-hosted node, which serves REST and the socket from one origin
+tags:
+  - name: auth
+    description: Turning a signed TokenRequest into a token.
+  - name: channels
+    description: Publish, history and presence for one channel.
+  - name: clients
+    description: Acting on a connected client.
+  - name: queues
+    description: Account queues and the rules that feed them. Needs the `amqp-subscribe` capability.
+  - name: console
+    description: Read by the operator console. Not SDK surface.
+  - name: health
+    description: Liveness, for a probe.
+security:
+  - apiKey: []
+  - token: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: health
+      summary: Liveness
+      security: []
+      responses:
+        "200":
+          description: The literal text `ok`.
+          content:
+            text/plain:
+              schema: { type: string, const: ok }
+
+  /keys/{keyName}/requestToken:
+    post:
+      tags: [auth]
+      operationId: requestToken
+      summary: Exchange a TokenRequest for a token
+      description: |
+        Normally the browser's call: your server signs a TokenRequest locally
+        (no network, see `fixtures/token-request.json`) and the browser posts it
+        here.
+
+        A **signed** request (`mac` present) needs no `Authorization` header —
+        the MAC is the proof. An **unsigned** one must come with `Basic` auth
+        for the same key.
+
+        Refused when the timestamp is more than two minutes from the node's
+        clock, when the nonce was already used, when `ttl` is outside
+        (0, 48h], or when the capability asks for more than the key holds.
+      security:
+        - {}
+        - apiKey: []
+      parameters:
+        - $ref: "#/components/parameters/keyName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TokenRequest" }
+      responses:
+        "200":
+          description: The token, and what it is good for.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenDetails" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /api/channels/{channel}/publish:
+    post:
+      tags: [channels]
+      operationId: publish
+      summary: Publish without a socket
+      description: |
+        For a job, a cron, or a webhook arriving at your backend. Goes through
+        the same fanout a socket publish does: subscribers, account queues and
+        integrations all see it identically. Needs `publish` on the channel.
+      parameters:
+        - $ref: "#/components/parameters/channel"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, description: The event name. }
+                data: { description: Any JSON value. }
+      responses:
+        "200":
+          description: Accepted into the fanout.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [channel, published]
+                properties:
+                  channel: { type: string }
+                  published: { type: boolean, const: true }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/Quota" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /api/channels/{channel}/history:
+    get:
+      tags: [channels]
+      operationId: channelHistory
+      summary: Stored messages, newest first
+      description: Needs `history` on the channel.
+      parameters:
+        - $ref: "#/components/parameters/channel"
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: Up to `limit` messages.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messages]
+                properties:
+                  messages:
+                    type: array
+                    items: { $ref: "#/components/schemas/Message" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/channels/{channel}/presence:
+    get:
+      tags: [channels]
+      operationId: presenceGet
+      summary: Who is present now
+      description: Needs `presence` on the channel.
+      parameters:
+        - $ref: "#/components/parameters/channel"
+      responses:
+        "200":
+          description: The current members.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [members, source]
+                properties:
+                  members:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresenceMember" }
+                  source:
+                    type: string
+                    enum: [store, memory]
+                    description: "`store` is the cross-node snapshot; `memory` is this node alone."
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/channels/{channel}/presence/history:
+    get:
+      tags: [channels]
+      operationId: presenceHistory
+      summary: Past enter, leave and update events
+      description: Needs `history` on the channel.
+      parameters:
+        - $ref: "#/components/parameters/channel"
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: Up to `limit` events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/PresenceEvent" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/clients/{clientId}/connections/close:
+    post:
+      tags: [clients]
+      operationId: forceDisconnect
+      summary: Close every connection a client holds
+      description: For signing a user out everywhere, or cutting off one you have just banned.
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: How many connections on this node were closed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [closed]
+                properties:
+                  closed: { type: integer, minimum: 0 }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /api/queues:
+    get:
+      tags: [queues]
+      operationId: listQueues
+      summary: The account's queues
+      parameters:
+        - name: all
+          in: query
+          description: "`1` includes paused queues."
+          schema: { type: string, enum: ["1"] }
+      responses:
+        "200":
+          description: The queues.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [queues]
+                properties:
+                  queues:
+                    type: array
+                    items: { $ref: "#/components/schemas/Queue" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [queues]
+      operationId: upsertQueue
+      summary: Create a queue, or edit one by name
+      description: |
+        An upsert keyed on `name`. Only a NEW queue counts against the plan's
+        ceiling, so an account at its limit can still edit what it has.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1 }
+                maxLength: { type: integer, minimum: 1 }
+                enabled: { type: boolean, default: true }
+      responses:
+        "200":
+          description: The queue, and its physical name on the broker when it could be declared.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [queue]
+                properties:
+                  queue: { $ref: "#/components/schemas/Queue" }
+                  physical: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/Quota" }
+
+  /api/queues/{queueId}:
+    parameters:
+      - $ref: "#/components/parameters/queueId"
+    patch:
+      tags: [queues]
+      operationId: updateQueue
+      summary: Pause, resume or resize a queue
+      description: The name is not patchable. `maxLength` reaches the broker only when the queue is next declared.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                maxLength: { type: [integer, "null"], description: "`null` removes the bound." }
+                enabled: { type: boolean }
+      responses:
+        "200":
+          description: The queue as it now stands.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [queue]
+                properties:
+                  queue: { $ref: "#/components/schemas/Queue" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [queues]
+      operationId: deleteQueue
+      summary: Delete a queue and what is waiting in it
+      responses:
+        "200":
+          description: The name of the queue that was deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted]
+                properties:
+                  deleted: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/queues/{queueId}/rules:
+    parameters:
+      - $ref: "#/components/parameters/queueId"
+    get:
+      tags: [queues]
+      operationId: listQueueRules
+      summary: Which channels feed this queue
+      responses:
+        "200":
+          description: The rules.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rules]
+                properties:
+                  rules:
+                    type: array
+                    items: { $ref: "#/components/schemas/QueueRule" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [queues]
+      operationId: createQueueRule
+      summary: Copy messages from matching channels into this queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourcePattern]
+              properties:
+                sourcePattern: { type: string, minLength: 1, description: "A channel name or wildcard pattern." }
+                filter: { type: string }
+      responses:
+        "200":
+          description: The rule.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rule]
+                properties:
+                  rule: { $ref: "#/components/schemas/QueueRule" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/queues/{queueId}/rules/{ruleId}:
+    delete:
+      tags: [queues]
+      operationId: deleteQueueRule
+      summary: Stop the copies at the source
+      description: Messages already in the queue stay there.
+      parameters:
+        - $ref: "#/components/parameters/queueId"
+        - name: ruleId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, const: true }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/channels:
+    get:
+      tags: [console]
+      operationId: listChannels
+      summary: Channels with a live attachment on this node
+      responses:
+        "200":
+          description: The channels.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [channels]
+                properties:
+                  channels:
+                    type: array
+                    items: { $ref: "#/components/schemas/ChannelSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/connections:
+    get:
+      tags: [console]
+      operationId: listConnections
+      summary: Live connections on this node, newest first
+      responses:
+        "200":
+          description: The connections.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connections]
+                properties:
+                  connections:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConnectionSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/connections/count:
+    get:
+      tags: [console]
+      operationId: connectionCount
+      summary: The organization's live connections against its plan ceiling
+      responses:
+        "200":
+          description: The count the gateway enforces on.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connections, limit]
+                properties:
+                  connections: { type: integer, minimum: 0 }
+                  limit: { type: [integer, "null"], description: "`null` when the plan has no ceiling." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/presence:
+    get:
+      tags: [console]
+      operationId: listPresenceChannels
+      summary: Channels with members present, busiest first
+      responses:
+        "200":
+          description: The channels.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [channels]
+                properties:
+                  channels:
+                    type: array
+                    items:
+                      type: object
+                      required: [channel, members]
+                      properties:
+                        channel: { type: string }
+                        members: { type: integer, minimum: 0 }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/metrics/series:
+    get:
+      tags: [console]
+      operationId: metricsSeries
+      summary: Per-minute metric buckets for the account
+      parameters:
+        - name: window
+          in: query
+          description: A named window, or milliseconds clamped to [1 minute, 7 days]. Default one hour.
+          schema: { type: string, examples: ["1h", "6h", "3600000"] }
+      responses:
+        "200":
+          description: The buckets.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [series, windowMs]
+                properties:
+                  series: { type: array, items: { type: object } }
+                  windowMs: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/webhooks:
+    get:
+      tags: [console]
+      operationId: listWebhookTargets
+      summary: Webhook targets, signing secrets redacted
+      responses:
+        "200": { $ref: "#/components/responses/Targets" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/amqp:
+    get:
+      tags: [console]
+      operationId: listAmqpTargets
+      summary: AMQP publish targets, broker credentials redacted
+      responses:
+        "200": { $ref: "#/components/responses/Targets" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/lambda:
+    get:
+      tags: [console]
+      operationId: listLambdaTargets
+      summary: Lambda invoke targets, external id redacted
+      responses:
+        "200": { $ref: "#/components/responses/Targets" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/sns:
+    get:
+      tags: [console]
+      operationId: listSnsTargets
+      summary: SNS publish targets, external id redacted
+      responses:
+        "200": { $ref: "#/components/responses/Targets" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/keys:
+    put:
+      tags: [console]
+      operationId: upsertApiKey
+      summary: Register or update an API key on the node
+      description: |
+        Allowed when the `Basic` credentials ARE the key being written (proof of
+        the secret), or when the caller is authenticated for the same account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accountId, keyId, keyName, secret]
+              properties:
+                accountId: { type: string }
+                keyId: { type: string }
+                keyName: { type: string, description: Must equal `keyId`. }
+                secret: { type: string }
+                name: { type: string }
+                status: { type: string, enum: [active, revoked], default: active }
+                capabilities: { $ref: "#/components/schemas/CapabilityMap" }
+                createdAt: { type: integer }
+      responses:
+        "200":
+          description: What was stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keyName, accountId, status]
+                properties:
+                  keyName: { type: string }
+                  accountId: { type: string }
+                  status: { type: string, enum: [active, revoked] }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /api/keys/{keyName}:
+    delete:
+      tags: [console]
+      operationId: revokeApiKey
+      summary: Revoke an API key
+      parameters:
+        - $ref: "#/components/parameters/keyName"
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keyName, status]
+                properties:
+                  keyName: { type: string }
+                  status: { type: string, const: revoked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+components:
+  securitySchemes:
+    apiKey:
+      type: http
+      scheme: basic
+      description: base64 of the whole key string `secret.keyId`. Not a user:password pair.
+    token:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The `token` from `requestToken`.
+
+  parameters:
+    channel:
+      name: channel
+      in: path
+      required: true
+      description: The channel name, percent-encoded. `%20` for a space, never `+`; `%2F` for a slash.
+      schema: { type: string, minLength: 1 }
+    keyName:
+      name: keyName
+      in: path
+      required: true
+      description: The keyId half of an API key.
+      schema: { type: string }
+    queueId:
+      name: queueId
+      in: path
+      required: true
+      description: The queue's id (a uuid), not its name.
+      schema: { type: string }
+    limit:
+      name: limit
+      in: query
+      description: Clamped to [1, 1000]. Anything unparseable means the default.
+      schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+
+  responses:
+    BadRequest:
+      description: The request is malformed. The sentence says which part.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing, malformed, unknown, revoked or expired credentials — or a TokenRequest whose MAC, timestamp or nonce was refused.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Authenticated, but the capability does not cover this operation on this channel.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No such resource in this account.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Quota:
+      description: A plan ceiling. Always carries `reason`. Retrying can succeed — a slot frees, a plan is upgraded — which is why this is not a 403.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Error"
+              - required: [reason]
+    Unavailable:
+      description: This node runs without the store or feature the operation needs.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Targets:
+      description: The integration targets configured for the account, secrets redacted.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [targets]
+            properties:
+              targets: { type: array, items: { type: object } }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: A sentence for a person. Do not branch on it.
+        reason:
+          type: string
+          enum: [connection_limit, queue_limit]
+          description: A stable slug for code. Cases are added, never renamed.
+
+    CapabilityOp:
+      type: string
+      enum: [subscribe, publish, presence, history, amqp-subscribe]
+
+    CapabilityMap:
+      type: object
+      description: Channel pattern to the operations allowed on it. `*` matches every channel.
+      additionalProperties:
+        type: array
+        items: { $ref: "#/components/schemas/CapabilityOp" }
+
+    TokenRequest:
+      type: object
+      required: [keyName, timestamp, nonce]
+      description: |
+        Signed by your server with the API key secret. `mac` is
+        base64(HMAC-SHA256(secret, text)) where text is keyName, ttl, capability,
+        clientId, timestamp and nonce — in that order, each followed by a
+        newline, an absent field contributing an empty line.
+      properties:
+        keyName: { type: string }
+        ttl:
+          type: integer
+          description: Milliseconds. Default one hour, maximum 48 hours.
+          exclusiveMinimum: 0
+          maximum: 172800000
+          default: 3600000
+        capability:
+          type: string
+          description: A CapabilityMap serialised as JSON. It is signed byte for byte, so it travels as a string. Absent means everything the key holds.
+        clientId: { type: string }
+        timestamp: { type: integer, description: Milliseconds since the epoch. Within two minutes of the node's clock. }
+        nonce: { type: string, minLength: 16, description: Single use. }
+        mac: { type: string, description: Absent only when the call carries Basic auth instead. }
+
+    TokenDetails:
+      type: object
+      required: [token, keyName, issued, expires, capability]
+      properties:
+        token: { type: string, description: "A JWT. Send as Bearer, or to the socket." }
+        keyName: { type: string }
+        issued: { type: integer, description: Milliseconds since the epoch. }
+        expires: { type: integer, description: Milliseconds since the epoch. }
+        capability:
+          type: string
+          description: The granted CapabilityMap in canonical form — keys and lists sorted — so not byte-identical to what was requested.
+        clientId: { type: string }
+
+    Message:
+      type: object
+      required: [channel, timestamp]
+      properties:
+        channel: { type: string }
+        name: { type: string }
+        data: {}
+        connectionId: { type: string }
+        timestamp: { type: integer }
+
+    PresenceMember:
+      type: object
+      required: [clientId, connectionId, updatedAt]
+      properties:
+        clientId: { type: string }
+        connectionId: { type: string }
+        data: {}
+        updatedAt: { type: integer }
+
+    PresenceEvent:
+      type: object
+      required: [channel, action, clientId, connectionId, timestamp]
+      properties:
+        channel: { type: string }
+        action: { type: string, enum: [enter, leave, update] }
+        clientId: { type: string }
+        connectionId: { type: string }
+        data: {}
+        timestamp: { type: integer }
+
+    Queue:
+      type: object
+      required: [id, accountId, name, enabled]
+      properties:
+        id: { type: string, description: uuid. How the queue is addressed everywhere. }
+        accountId: { type: string }
+        name: { type: string, description: Immutable. The physical queue a worker consumes is `accountId:name`. }
+        maxLength: { type: integer }
+        enabled: { type: boolean }
+
+    QueueRule:
+      type: object
+      required: [id, accountId, queueName, sourcePattern, enabled]
+      properties:
+        id: { type: string }
+        accountId: { type: string }
+        queueName: { type: string }
+        sourcePattern: { type: string }
+        filter: { type: string }
+        enabled: { type: boolean }
+
+    ChannelSummary:
+      type: object
+      required: [name, connections, subscribers]
+      properties:
+        name: { type: string }
+        connections: { type: integer }
+        subscribers: { type: integer, description: "Distinct clientIds, or the connection count when none is identified." }
+
+    ConnectionSummary:
+      type: object
+      required: [connectionId, channels, channelCount, transport, authenticated, connectedAt]
+      properties:
+        connectionId: { type: string }
+        clientId: { type: string }
+        channels: { type: array, items: { type: string } }
+        channelCount: { type: integer }
+        transport: { type: string, const: websocket }
+        authenticated: { type: boolean }
+        connectedAt: { type: integer }

@@ -1,0 +1,85 @@
+# Release pipeline. Fires on a `vX.Y.Z` tag:
+#
+#   1. bump lib/blackevin/version.rb and CHANGELOG.md, commit
+#   2. bundle exec rake tag      (or: git tag vX.Y.Z && git push origin main vX.Y.Z)
+#
+# Publishing uses RubyGems Trusted Publishing (OIDC): no API key, no secret, no
+# MFA prompt. It needs a trusted publisher on rubygems.org for this gem with
+#   owner = thadeu, repository = blackevin-ruby, workflow = release.yml
+# and those must match THIS repository exactly — a publisher registered under
+# another owner is refused, and the error does not say that is why.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# One release per tag, never two racing to push the same version.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    # Fail fast instead of hanging on a publish step waiting for input.
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Verify tag matches gem version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          gem_version="$(ruby -e 'require_relative "lib/blackevin/version"; print Blackevin::VERSION')"
+
+          if [ "$tag" != "$gem_version" ]; then
+            echo "Tag '$tag' does not match gem version '$gem_version'" >&2
+            exit 1
+          fi
+
+          echo "GEM_VERSION=$gem_version" >> "$GITHUB_ENV"
+
+      - name: Lint
+        run: bundle exec standardrb
+
+      - name: Test
+        run: bundle exec rspec
+
+      - name: Build
+        run: gem build blackevin.gemspec
+
+      # A re-run of the same tag must not fail the pipeline on "repushing is not
+      # allowed" — the GitHub release below may still be what is missing.
+      - name: Check whether this version is already on RubyGems
+        id: published
+        run: |
+          status="$(curl -s -o /dev/null -w '%{http_code}' "https://rubygems.org/api/v2/rubygems/blackevin/versions/${GEM_VERSION}.json")"
+
+          echo "exists=$([ "$status" = "200" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure RubyGems trusted publishing credentials
+        if: steps.published.outputs.exists == 'false'
+        uses: rubygems/configure-rubygems-credentials@v2.1.0
+
+      - name: Publish to RubyGems
+        if: steps.published.outputs.exists == 'false'
+        run: gem push "blackevin-${GEM_VERSION}.gem" < /dev/null
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: blackevin-*.gem

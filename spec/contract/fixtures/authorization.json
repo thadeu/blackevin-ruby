@@ -1,0 +1,9 @@
+{
+  "description": "The Authorization header a REST call carries. A token wins over a key: a client acting as one user must not silently act as the whole account. Basic is base64 of the full key string as UTF-8, with no username/password split.",
+  "cases": [
+    { "name": "key", "options": { "key": "ck_test_5f2c8a1e9b.k25b5a4" }, "header": "Basic Y2tfdGVzdF81ZjJjOGExZTliLmsyNWI1YTQ=" },
+    { "name": "token", "options": { "token": "eyJhbGciOiJIUzI1NiJ9.e30.sig" }, "header": "Bearer eyJhbGciOiJIUzI1NiJ9.e30.sig" },
+    { "name": "token wins over key", "options": { "key": "ck_test_5f2c8a1e9b.k25b5a4", "token": "tok" }, "header": "Bearer tok" },
+    { "name": "neither sends no header", "options": {}, "header": null }
+  ]
+}

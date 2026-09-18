@@ -1,0 +1,16 @@
+{
+  "description": "Which hosts a client talks to. Explicit option, then environment, then the production default. The REST base is derived from the socket endpoint (scheme swapped, trailing slash dropped) ONLY when the socket endpoint was given explicitly or by env; otherwise REST falls to its own default host, because production serves the two from different names.",
+  "defaults": { "endpoint": "wss://ws.blackevin.com", "restEndpoint": "https://api.blackevin.com" },
+  "env": { "endpoint": "BLACKEVIN_ENDPOINT", "restEndpoint": "BLACKEVIN_REST_ENDPOINT" },
+  "cases": [
+    { "name": "nothing given", "options": {}, "env": {}, "endpoint": "wss://ws.blackevin.com", "restEndpoint": "https://api.blackevin.com" },
+    { "name": "explicit ws derives rest", "options": { "endpoint": "ws://localhost:3000" }, "env": {}, "endpoint": "ws://localhost:3000", "restEndpoint": "http://localhost:3000" },
+    { "name": "wss derives https and drops the trailing slash", "options": { "endpoint": "wss://rt.example.com/" }, "env": {}, "endpoint": "wss://rt.example.com/", "restEndpoint": "https://rt.example.com" },
+    { "name": "explicit rest wins over derivation", "options": { "endpoint": "ws://localhost:3000", "restEndpoint": "http://localhost:4000" }, "env": {}, "endpoint": "ws://localhost:3000", "restEndpoint": "http://localhost:4000" },
+    { "name": "rest alone leaves the socket on its default", "options": { "restEndpoint": "http://localhost:4000" }, "env": {}, "endpoint": "wss://ws.blackevin.com", "restEndpoint": "http://localhost:4000" },
+    { "name": "env ws derives rest", "options": {}, "env": { "BLACKEVIN_ENDPOINT": "ws://node:3000" }, "endpoint": "ws://node:3000", "restEndpoint": "http://node:3000" },
+    { "name": "env rest wins over derivation from env ws", "options": {}, "env": { "BLACKEVIN_ENDPOINT": "ws://node:3000", "BLACKEVIN_REST_ENDPOINT": "http://api:3000" }, "endpoint": "ws://node:3000", "restEndpoint": "http://api:3000" },
+    { "name": "option wins over env", "options": { "endpoint": "ws://option:1" }, "env": { "BLACKEVIN_ENDPOINT": "ws://env:2" }, "endpoint": "ws://option:1", "restEndpoint": "http://option:1" },
+    { "name": "blank values count as absent", "options": { "endpoint": "  " }, "env": { "BLACKEVIN_REST_ENDPOINT": "" }, "endpoint": "wss://ws.blackevin.com", "restEndpoint": "https://api.blackevin.com" }
+  ]
+}

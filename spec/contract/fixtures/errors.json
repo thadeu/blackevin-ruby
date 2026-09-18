@@ -1,0 +1,13 @@
+{
+  "description": "Turning a non-2xx REST response into the SDK's error. `body` is the raw response text. The server's sentence is kept; `reason` is a stable slug to branch on; a body that is not JSON must degrade to the status alone, never raise a parse error over the real one. `what` is the operation label each call passes.",
+  "reasons": ["connection_limit", "queue_limit"],
+  "cases": [
+    { "name": "server sentence", "what": "publish", "status": 403, "body": "{\"error\":\"forbidden publish on room:1\"}", "message": "publish failed: forbidden publish on room:1", "statusCode": 403, "reason": null, "isQuota": false },
+    { "name": "quota carries a reason", "what": "publish", "status": 429, "body": "{\"error\":\"queue limit reached (3) — upgrade the plan or delete a queue\",\"reason\":\"queue_limit\"}", "message": "publish failed: queue limit reached (3) — upgrade the plan or delete a queue", "statusCode": 429, "reason": "queue_limit", "isQuota": true },
+    { "name": "HTML from a proxy", "what": "history", "status": 502, "body": "<html><body>Bad Gateway</body></html>", "message": "history failed: 502", "statusCode": 502, "reason": null, "isQuota": false },
+    { "name": "empty body", "what": "presence get", "status": 500, "body": "", "message": "presence get failed: 500", "statusCode": 500, "reason": null, "isQuota": false },
+    { "name": "empty error string falls back to the status", "what": "requestToken", "status": 401, "body": "{\"error\":\"\"}", "message": "requestToken failed: 401", "statusCode": 401, "reason": null, "isQuota": false },
+    { "name": "non-string error and reason are ignored", "what": "requestToken", "status": 400, "body": "{\"error\":{\"code\":1},\"reason\":7}", "message": "requestToken failed: 400", "statusCode": 400, "reason": null, "isQuota": false },
+    { "name": "JSON that is not an object", "what": "history", "status": 500, "body": "null", "message": "history failed: 500", "statusCode": 500, "reason": null, "isQuota": false }
+  ]
+}

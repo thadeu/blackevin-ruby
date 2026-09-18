@@ -1,0 +1,15 @@
+.DS_Store
+.claude
+.cursor
+.agents
+/.bundle
+/.env*
+/tmp/
+/log/
+/coverage/
+/doc/
+/.yardoc/
+*.log
+*.gem
+.rspec_status
+Gemfile.lock

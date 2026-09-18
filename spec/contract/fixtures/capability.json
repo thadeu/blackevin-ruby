@@ -1,0 +1,8 @@
+{
+  "description": "Capabilities map a channel pattern to the operations allowed on it. `operations` is the closed set the server knows. `canonical` is the form the SERVER returns in TokenDetails.capability (keys sorted, each list sorted, compact JSON) — an SDK does not need to produce it, only to not be surprised that what comes back is not byte-identical to what went in.",
+  "operations": ["subscribe", "publish", "presence", "history", "amqp-subscribe"],
+  "canonical": [
+    { "name": "sorts keys and lists", "input": { "zeta": ["publish", "subscribe"], "alpha": ["history"] }, "output": "{\"alpha\":[\"history\"],\"zeta\":[\"publish\",\"subscribe\"]}" },
+    { "name": "wildcard", "input": { "*": ["subscribe", "publish", "presence", "history"] }, "output": "{\"*\":[\"history\",\"presence\",\"publish\",\"subscribe\"]}" }
+  ]
+}

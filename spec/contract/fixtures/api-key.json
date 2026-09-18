@@ -1,0 +1,15 @@
+{
+  "description": "An API key is written `secret.keyId`. Split on the LAST dot: the keyId carries none, so everything before it is the secret verbatim. keyName and keyId are the same value. Surrounding whitespace is trimmed, because a key pasted from a dashboard or an env file often carries a newline.",
+  "valid": [
+    { "name": "plain", "key": "ck_test_5f2c8a1e9b.k25b5a4", "keyName": "k25b5a4", "secret": "ck_test_5f2c8a1e9b" },
+    { "name": "dots inside the secret", "key": "ck.live.with.dots.kZ9", "keyName": "kZ9", "secret": "ck.live.with.dots" },
+    { "name": "surrounding whitespace", "key": "  ck_test_5f2c8a1e9b.k25b5a4\n", "keyName": "k25b5a4", "secret": "ck_test_5f2c8a1e9b" }
+  ],
+  "invalid": [
+    { "name": "no dot", "key": "ck_test_5f2c8a1e9b" },
+    { "name": "empty secret", "key": ".k25b5a4" },
+    { "name": "empty keyId", "key": "ck_test_5f2c8a1e9b." },
+    { "name": "empty string", "key": "" },
+    { "name": "whitespace only", "key": "   " }
+  ]
+}

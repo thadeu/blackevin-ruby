@@ -1,0 +1,297 @@
+{
+  "description": "The HTTP request each REST operation must produce, and what it returns for a given response. All cases use restEndpoint http://node.test and, unless stated, key ck_test_5f2c8a1e9b.k25b5a4. Channel names go into the path percent-encoded so that they decode back to the exact name: a space is %20 and never +, a slash is %2F, a colon may be sent raw or as %3A. `path` is what encodeURIComponent yields; an SDK passes if its path percent-decodes to `pathDecoded`, contains no + and no raw / inside the channel segment. Header values are true (must be present and equal the top-level `authorization`, or the stated content type) or false (must be absent). Bodies are compared as parsed JSON, not as text; keys listed in `bodyNullableKeys` may be absent or null.",
+  "restEndpoint": "http://node.test",
+  "key": "ck_test_5f2c8a1e9b.k25b5a4",
+  "authorization": "Basic Y2tfdGVzdF81ZjJjOGExZTliLmsyNWI1YTQ=",
+  "cases": [
+    {
+      "name": "publish",
+      "operation": "channel.publish",
+      "channel": "room:42",
+      "args": {
+        "name": "greeting",
+        "data": {
+          "text": "hi"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/api/channels/room%3A42/publish",
+        "pathDecoded": "/api/channels/room:42/publish",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": true
+        },
+        "body": {
+          "name": "greeting",
+          "data": {
+            "text": "hi"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "channel": "room:42",
+          "published": true
+        }
+      },
+      "returns": null
+    },
+    {
+      "name": "publish to a channel with a slash, a space and non-ASCII",
+      "operation": "channel.publish",
+      "channel": "team/a b:ação",
+      "args": {
+        "name": "e",
+        "data": "x"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/api/channels/team%2Fa%20b%3Aa%C3%A7%C3%A3o/publish",
+        "pathDecoded": "/api/channels/team/a b:ação/publish",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": true
+        },
+        "body": {
+          "name": "e",
+          "data": "x"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "channel": "team/a b:ação",
+          "published": true
+        }
+      },
+      "returns": null
+    },
+    {
+      "name": "publish without data omits the key or sends null, never a string",
+      "operation": "channel.publish",
+      "channel": "room:42",
+      "args": {
+        "name": "ping"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/api/channels/room%3A42/publish",
+        "pathDecoded": "/api/channels/room:42/publish",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": true
+        },
+        "body": {
+          "name": "ping"
+        },
+        "bodyNullableKeys": [
+          "data"
+        ]
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "channel": "room:42",
+          "published": true
+        }
+      },
+      "returns": null
+    },
+    {
+      "name": "history defaults to limit 100",
+      "operation": "channel.history",
+      "channel": "room:42",
+      "args": {},
+      "request": {
+        "method": "GET",
+        "path": "/api/channels/room%3A42/history",
+        "pathDecoded": "/api/channels/room:42/history",
+        "query": {
+          "limit": "100"
+        },
+        "headers": {
+          "authorization": true
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "messages": [
+            {
+              "channel": "room:42",
+              "name": "greeting",
+              "data": {
+                "text": "hi"
+              },
+              "timestamp": 1767225600000,
+              "connectionId": "c1"
+            }
+          ]
+        }
+      },
+      "returns": [
+        {
+          "channel": "room:42",
+          "name": "greeting",
+          "data": {
+            "text": "hi"
+          },
+          "timestamp": 1767225600000,
+          "connectionId": "c1"
+        }
+      ]
+    },
+    {
+      "name": "history with a limit, and a body missing the list returns empty",
+      "operation": "channel.history",
+      "channel": "room:42",
+      "args": {
+        "limit": 5
+      },
+      "request": {
+        "method": "GET",
+        "path": "/api/channels/room%3A42/history",
+        "pathDecoded": "/api/channels/room:42/history",
+        "query": {
+          "limit": "5"
+        },
+        "headers": {
+          "authorization": true
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {}
+      },
+      "returns": []
+    },
+    {
+      "name": "presence get",
+      "operation": "channel.presence.get",
+      "channel": "room:42",
+      "args": {},
+      "request": {
+        "method": "GET",
+        "path": "/api/channels/room%3A42/presence",
+        "pathDecoded": "/api/channels/room:42/presence",
+        "headers": {
+          "authorization": true
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "members": [
+            {
+              "clientId": "bob",
+              "connectionId": "c1",
+              "data": {
+                "status": "online"
+              },
+              "updatedAt": 1767225600000
+            }
+          ],
+          "source": "store"
+        }
+      },
+      "returns": [
+        {
+          "clientId": "bob",
+          "connectionId": "c1",
+          "data": {
+            "status": "online"
+          },
+          "updatedAt": 1767225600000
+        }
+      ]
+    },
+    {
+      "name": "requestToken sends the TokenRequest as is, with no Authorization",
+      "operation": "auth.requestToken",
+      "args": {
+        "keyName": "k25b5a4",
+        "ttl": 3600000,
+        "capability": "{\"*\":[\"subscribe\"]}",
+        "clientId": "bob",
+        "timestamp": 1767225600000,
+        "nonce": "0123456789abcdef0123456789abcdef",
+        "mac": "AAAA"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/keys/k25b5a4/requestToken",
+        "pathDecoded": "/keys/k25b5a4/requestToken",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": false
+        },
+        "body": {
+          "keyName": "k25b5a4",
+          "ttl": 3600000,
+          "capability": "{\"*\":[\"subscribe\"]}",
+          "clientId": "bob",
+          "timestamp": 1767225600000,
+          "nonce": "0123456789abcdef0123456789abcdef",
+          "mac": "AAAA"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "token": "jwt",
+          "keyName": "k25b5a4",
+          "issued": 1767225600000,
+          "expires": 1767229200000,
+          "capability": "{\"*\":[\"subscribe\"]}",
+          "clientId": "bob"
+        }
+      },
+      "returns": {
+        "token": "jwt",
+        "keyName": "k25b5a4",
+        "issued": 1767225600000,
+        "expires": 1767229200000,
+        "capability": "{\"*\":[\"subscribe\"]}",
+        "clientId": "bob"
+      }
+    },
+    {
+      "name": "a refusal raises the SDK error with the server's sentence",
+      "operation": "channel.publish",
+      "channel": "room:42",
+      "args": {
+        "name": "e",
+        "data": 1
+      },
+      "request": {
+        "method": "POST",
+        "path": "/api/channels/room%3A42/publish",
+        "pathDecoded": "/api/channels/room:42/publish",
+        "headers": {
+          "content-type": "application/json",
+          "authorization": true
+        },
+        "body": {
+          "name": "e",
+          "data": 1
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error": "forbidden publish on room:42"
+        }
+      },
+      "raises": {
+        "message": "publish failed: forbidden publish on room:42",
+        "statusCode": 403,
+        "reason": null
+      }
+    }
+  ]
+}

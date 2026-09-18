@@ -1,0 +1,234 @@
+{
+  "description": "TokenRequest signing. `cases` drive the public createTokenRequest; `signing` drives the MAC function alone, for the two fields the public call never leaves empty. The MAC is base64(HMAC-SHA256(secret, signingText)) and signingText is six fields, in this order, each followed by \\n.",
+  "fieldOrder": [
+    "keyName",
+    "ttl",
+    "capability",
+    "clientId",
+    "timestamp",
+    "nonce"
+  ],
+  "defaults": {
+    "ttl": 3600000,
+    "capability": "{\"*\":[\"subscribe\",\"publish\",\"presence\",\"history\"]}",
+    "nonceHexChars": 32
+  },
+  "cases": [
+    {
+      "name": "every field present",
+      "key": "ck_test_5f2c8a1e9b.k25b5a4",
+      "params": {
+        "clientId": "user-42",
+        "ttl": 3600000,
+        "capability": {
+          "room:42": [
+            "subscribe",
+            "publish"
+          ],
+          "presence:room:42": [
+            "presence"
+          ]
+        },
+        "timestamp": 1767225600000,
+        "nonce": "0123456789abcdef0123456789abcdef"
+      },
+      "expected": {
+        "signingText": "k25b5a4\n3600000\n{\"room:42\":[\"subscribe\",\"publish\"],\"presence:room:42\":[\"presence\"]}\nuser-42\n1767225600000\n0123456789abcdef0123456789abcdef\n",
+        "request": {
+          "keyName": "k25b5a4",
+          "ttl": 3600000,
+          "capability": "{\"room:42\":[\"subscribe\",\"publish\"],\"presence:room:42\":[\"presence\"]}",
+          "timestamp": 1767225600000,
+          "nonce": "0123456789abcdef0123456789abcdef",
+          "clientId": "user-42",
+          "mac": "1FC7IN9YmayXRRGjs1Rtll/huCfQkfPXvcXdzsxYTRA="
+        }
+      }
+    },
+    {
+      "name": "no clientId leaves an empty line, not a missing one",
+      "key": "ck_test_5f2c8a1e9b.k25b5a4",
+      "params": {
+        "ttl": 60000,
+        "capability": {
+          "*": [
+            "subscribe"
+          ]
+        },
+        "timestamp": 1767225600000,
+        "nonce": "ffffffffffffffffffffffffffffffff"
+      },
+      "expected": {
+        "signingText": "k25b5a4\n60000\n{\"*\":[\"subscribe\"]}\n\n1767225600000\nffffffffffffffffffffffffffffffff\n",
+        "request": {
+          "keyName": "k25b5a4",
+          "ttl": 60000,
+          "capability": "{\"*\":[\"subscribe\"]}",
+          "timestamp": 1767225600000,
+          "nonce": "ffffffffffffffffffffffffffffffff",
+          "mac": "71vfSUNCzcYVDhwEaDYP+NoKfIVuxP5ln9AyL3h+1dM="
+        }
+      }
+    },
+    {
+      "name": "defaults: ttl one hour, capability everything but amqp-subscribe",
+      "key": "ck_test_5f2c8a1e9b.k25b5a4",
+      "params": {
+        "clientId": "bob",
+        "timestamp": 1767225600000,
+        "nonce": "00000000000000000000000000000000"
+      },
+      "expected": {
+        "signingText": "k25b5a4\n3600000\n{\"*\":[\"subscribe\",\"publish\",\"presence\",\"history\"]}\nbob\n1767225600000\n00000000000000000000000000000000\n",
+        "request": {
+          "keyName": "k25b5a4",
+          "ttl": 3600000,
+          "capability": "{\"*\":[\"subscribe\",\"publish\",\"presence\",\"history\"]}",
+          "timestamp": 1767225600000,
+          "nonce": "00000000000000000000000000000000",
+          "clientId": "bob",
+          "mac": "7TrlUKV3jJ2xFB5BLkcxDxZuic4Y3ylhr2vjoj2Lj6k="
+        }
+      }
+    },
+    {
+      "name": "capability given as a string is signed byte for byte",
+      "key": "ck_test_5f2c8a1e9b.k25b5a4",
+      "params": {
+        "clientId": "bob",
+        "ttl": 1000,
+        "capability": "{ \"b\": [\"publish\"], \"a\": [\"subscribe\"] }",
+        "timestamp": 1767225600000,
+        "nonce": "abcdefabcdefabcdefabcdefabcdefab"
+      },
+      "expected": {
+        "signingText": "k25b5a4\n1000\n{ \"b\": [\"publish\"], \"a\": [\"subscribe\"] }\nbob\n1767225600000\nabcdefabcdefabcdefabcdefabcdefab\n",
+        "request": {
+          "keyName": "k25b5a4",
+          "ttl": 1000,
+          "capability": "{ \"b\": [\"publish\"], \"a\": [\"subscribe\"] }",
+          "timestamp": 1767225600000,
+          "nonce": "abcdefabcdefabcdefabcdefabcdefab",
+          "clientId": "bob",
+          "mac": "yKCf1k80AvovZDjD8X7Z8bKodbzl+qaIqHZHKa2TNb0="
+        }
+      }
+    },
+    {
+      "name": "capability map keeps insertion order and is not sorted",
+      "key": "ck_test_5f2c8a1e9b.k25b5a4",
+      "params": {
+        "clientId": "bob",
+        "ttl": 1000,
+        "capability": {
+          "zeta": [
+            "publish",
+            "subscribe"
+          ],
+          "alpha": [
+            "history"
+          ]
+        },
+        "timestamp": 1767225600000,
+        "nonce": "abcdefabcdefabcdefabcdefabcdefab"
+      },
+      "expected": {
+        "signingText": "k25b5a4\n1000\n{\"zeta\":[\"publish\",\"subscribe\"],\"alpha\":[\"history\"]}\nbob\n1767225600000\nabcdefabcdefabcdefabcdefabcdefab\n",
+        "request": {
+          "keyName": "k25b5a4",
+          "ttl": 1000,
+          "capability": "{\"zeta\":[\"publish\",\"subscribe\"],\"alpha\":[\"history\"]}",
+          "timestamp": 1767225600000,
+          "nonce": "abcdefabcdefabcdefabcdefabcdefab",
+          "clientId": "bob",
+          "mac": "5DizWFKVwk0quOYufzlWdMJ8SRlU+L2xtbLhHjTm7K4="
+        }
+      }
+    },
+    {
+      "name": "non-ASCII clientId and channel are signed as UTF-8 bytes",
+      "key": "ck_test_5f2c8a1e9b.k25b5a4",
+      "params": {
+        "clientId": "joão-日本",
+        "ttl": 3600000,
+        "capability": {
+          "sala:ação": [
+            "subscribe"
+          ]
+        },
+        "timestamp": 1767225600123,
+        "nonce": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
+      },
+      "expected": {
+        "signingText": "k25b5a4\n3600000\n{\"sala:ação\":[\"subscribe\"]}\njoão-日本\n1767225600123\n1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d\n",
+        "request": {
+          "keyName": "k25b5a4",
+          "ttl": 3600000,
+          "capability": "{\"sala:ação\":[\"subscribe\"]}",
+          "timestamp": 1767225600123,
+          "nonce": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d",
+          "clientId": "joão-日本",
+          "mac": "nY/QdYliXyDIAMdIuIoepY2IGouqTjAK3rg1QVF7pXw="
+        }
+      }
+    },
+    {
+      "name": "a secret containing dots: only the last dot splits the key",
+      "key": "ck.live.with.dots.kZ9",
+      "params": {
+        "clientId": "bob",
+        "ttl": 3600000,
+        "capability": {
+          "*": [
+            "subscribe"
+          ]
+        },
+        "timestamp": 1767225600000,
+        "nonce": "0123456789abcdef0123456789abcdef"
+      },
+      "expected": {
+        "signingText": "kZ9\n3600000\n{\"*\":[\"subscribe\"]}\nbob\n1767225600000\n0123456789abcdef0123456789abcdef\n",
+        "request": {
+          "keyName": "kZ9",
+          "ttl": 3600000,
+          "capability": "{\"*\":[\"subscribe\"]}",
+          "timestamp": 1767225600000,
+          "nonce": "0123456789abcdef0123456789abcdef",
+          "clientId": "bob",
+          "mac": "LRgqG1Ut0ZnI6TQYnBz5G3GYk+wjOvryUHB7ovTEU4I="
+        }
+      }
+    }
+  ],
+  "signing": [
+    {
+      "name": "ttl absent signs as an empty line",
+      "secret": "ck_test_5f2c8a1e9b",
+      "request": {
+        "keyName": "k25b5a4",
+        "capability": "{\"*\":[\"subscribe\"]}",
+        "timestamp": 1767225600000,
+        "nonce": "0123456789abcdef0123456789abcdef"
+      },
+      "expected": {
+        "signingText": "k25b5a4\n\n{\"*\":[\"subscribe\"]}\n\n1767225600000\n0123456789abcdef0123456789abcdef\n",
+        "mac": "NN3F3Vp4ZfmB4M+LhhCdONk1W20QaKrHbvVO9DFOuOo="
+      }
+    },
+    {
+      "name": "capability absent signs as an empty line",
+      "secret": "ck_test_5f2c8a1e9b",
+      "request": {
+        "keyName": "k25b5a4",
+        "ttl": 5000,
+        "clientId": "bob",
+        "timestamp": 1767225600000,
+        "nonce": "0123456789abcdef0123456789abcdef"
+      },
+      "expected": {
+        "signingText": "k25b5a4\n5000\n\nbob\n1767225600000\n0123456789abcdef0123456789abcdef\n",
+        "mac": "0BKUsSQDA81O6A0UFZhRRdSgGYmZ0yVmrk1nAA9zhlM="
+      }
+    }
+  ]
+}
