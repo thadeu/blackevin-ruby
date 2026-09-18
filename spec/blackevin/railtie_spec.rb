@@ -8,7 +8,18 @@ require 'rbconfig'
 RSpec.describe 'Blackevin::Railtie' do
   def boot(script)
     lib = File.expand_path('../../lib', __dir__)
-    output, status = Open3.capture2e({'BLACKEVIN_KEY' => nil}, RbConfig.ruby, '-I', lib, '-e', script)
+    env = {'BLACKEVIN_KEY' => nil}
+    flags = ['-I', lib]
+
+    # Under COVERAGE the child measures itself and SimpleCov merges it into the
+    # suite's result, which is the only way railtie.rb is ever counted.
+    if ENV['COVERAGE']
+      env['SIMPLECOV_COMMAND'] = "railtie:#{script.sum}"
+      flags.unshift('-rsimplecov')
+      script = "SimpleCov.start\n#{script}"
+    end
+
+    output, status = Open3.capture2e(env, RbConfig.ruby, *flags, '-e', script)
 
     raise output unless status.success?
 
@@ -34,7 +45,7 @@ RSpec.describe 'Blackevin::Railtie' do
 
       Dummy.initialize!
 
-      puts [Blackevin.rest.api_key.key_name, Blackevin.rest.rest_endpoint].join(" ")
+      puts [Blackevin::Rest.new.api_key.key_name, Blackevin::Rest.new.rest_endpoint].join(" ")
     RUBY
 
     expect(boot(script)).to eq('fromrails http://localhost:3000')
@@ -50,7 +61,7 @@ RSpec.describe 'Blackevin::Railtie' do
 
       Dummy.initialize!
 
-      puts Blackevin.rest.api_key.key_name
+      puts Blackevin::Rest.new.api_key.key_name
     RUBY
 
     expect(boot(script)).to eq('fromcredentials')

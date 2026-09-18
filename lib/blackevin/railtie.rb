@@ -12,6 +12,8 @@ module Blackevin
   #   config.blackevin.rest_endpoint = "http://localhost:3000"
   #
   # An explicit +Blackevin.configure+ or +BLACKEVIN_KEY+ still wins over credentials.
+  # It only fills {Blackevin.configuration}; the application still builds its own
+  # +Blackevin::Rest.new+.
   class Railtie < Rails::Railtie
     SETTINGS = %i[key rest_endpoint endpoint open_timeout read_timeout transport].freeze
 

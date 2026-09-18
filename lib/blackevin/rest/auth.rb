@@ -10,8 +10,11 @@ module Blackevin
       DEFAULT_TTL_MS = 3_600_000
       DEFAULT_CAPABILITY = {'*' => %w[subscribe publish presence history]}.freeze
 
-      def initialize(rest, clock: nil, nonce: nil)
-        @rest = rest
+      # @param client [Blackevin::Rest, nil] default: a new one, from the configuration
+      # @param clock [#call, nil] returns milliseconds since the epoch; injected for tests
+      # @param nonce [#call, nil] returns a fresh nonce; injected for tests
+      def initialize(client: nil, clock: nil, nonce: nil)
+        @client = Rest.resolve(client)
         @clock = clock || -> { Process.clock_gettime(Process::CLOCK_REALTIME, :millisecond) }
         @nonce = nonce || -> { SecureRandom.hex(16) }
       end
@@ -31,7 +34,7 @@ module Blackevin
       # @return [Blackevin::TokenRequest] signed
       # @raise [Blackevin::ConfigurationError] without a usable API key
       def create_token_request(client_id: nil, ttl: nil, capability: nil, timestamp: nil, nonce: nil)
-        api_key = @rest.api_key
+        api_key = @client.api_key
 
         request = TokenRequest.new(
           key_name: api_key.key_name,
@@ -62,7 +65,7 @@ module Blackevin
           end
         path = "/keys/#{Rest.escape(wire.fetch('keyName'))}/requestToken"
 
-        TokenDetails.from_h(@rest.request('requestToken', 'POST', path, body: wire, authorize: false))
+        TokenDetails.from_h(@client.request('requestToken', 'POST', path, body: wire, authorize: false))
       end
 
       private

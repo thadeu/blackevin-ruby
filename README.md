@@ -10,29 +10,69 @@ library — nothing that can break under you in an upgrade. Ruby 3.0 and up, in
 Rails, Sinatra, Hanami or a plain script.
 
 ```ruby
-gem "blackevin"
+gem 'blackevin'
 ```
 
-## Configure
+## The client
 
-With `BLACKEVIN_KEY` in the environment there is nothing to configure:
+You work with an instance. There is no global client and no class-level call
+that touches the network.
 
 ```ruby
-Blackevin.rest.channels.get("room:42").publish("greeting", {text: "hi"})
+bk = Blackevin::Rest.new
+
+ch = bk.channels.get('room:42')
+ch.publish('greeting', {text: 'hi'})
 ```
 
-Or say it explicitly, once, at boot:
+With `BLACKEVIN_KEY` in the environment, `new` needs no arguments. Creating one is
+cheap — it opens no connection and holds no state — so build it where you use
+it, or keep one in a constant; both are fine, and an instance is thread-safe.
+
+### Each part stands alone
+
+Nothing forces a chain through `Blackevin::Rest`. Every part is a class you can
+build by itself; without a `client:` it makes its own from the configuration.
 
 ```ruby
+Blackevin::Rest::Auth.new.create_token_request(client_id: current_user.id)
+Blackevin::Rest::Channel.new('room:42').publish('greeting', {text: 'hi'})
+Blackevin::Rest::Presence.new('room:42').get
+Blackevin::Rest::Queues.new.list
+Blackevin::Rest::Clients.new.disconnect(user.id)
+```
+
+Pass `client:` to share one, or to use another key:
+
+```ruby
+bk = Blackevin::Rest.new(key: other_key)
+
+Blackevin::Rest::Queues.new(client: bk).list
+```
+
+`bk.auth`, `bk.channels`, `bk.clients` and `bk.queues` are these same classes,
+already holding `bk`.
+
+Every option can be passed directly:
+
+```ruby
+bk = Blackevin::Rest.new(key: 'ck_live_….kAbC', read_timeout: 3)
+```
+
+### Defaults, set once
+
+`Blackevin.configure` holds the defaults a new `Blackevin::Rest` starts from. It
+builds nothing and calls nothing. An argument to `new` wins over it, and it wins
+over the environment.
+
+```ruby
+# config/initializers/blackevin.rb
 Blackevin.configure do |config|
-  config.key = ENV.fetch("BLACKEVIN_KEY")   # secret.keyId, from the console
-  config.open_timeout = 5                   # seconds
+  config.key = Rails.application.credentials.dig(:blackevin, :key)   # secret.keyId
+  config.open_timeout = 5                                          # seconds
   config.read_timeout = 10
 end
 ```
-
-`Blackevin.rest` is one shared, thread-safe client. For more than one key, build
-your own: `Blackevin::Rest.new(key: …)`.
 
 Against a local or self-hosted node, which serves REST and the socket from one
 origin, set `BLACKEVIN_ENDPOINT=ws://localhost:3000` (or `config.endpoint`) and the
@@ -55,7 +95,7 @@ class BlackevinTokensController < ApplicationController
   before_action :authenticate_user!
 
   def show
-    render json: Blackevin.rest.auth.create_token_request(
+    render json: Blackevin::Rest::Auth.new.create_token_request(
       client_id: current_user.id,
       ttl: 1.hour.in_milliseconds,
       capability: {
@@ -67,7 +107,7 @@ class BlackevinTokensController < ApplicationController
 end
 
 # config/routes.rb
-resource :blackevin_token, only: :show, path: "blackevin/token"
+resource :blackevin_token, only: :show, path: 'blackevin/token'
 ```
 
 The key can live in credentials instead of the environment — the Railtie reads
@@ -75,20 +115,20 @@ The key can live in credentials instead of the environment — the Railtie reads
 
 ```ruby
 # config/environments/development.rb
-config.blackevin.endpoint = "ws://localhost:3000"
+config.blackevin.endpoint = 'ws://localhost:3000'
 ```
 
 ### Sinatra
 
 ```ruby
-require "sinatra"
-require "blackevin"
+require 'sinatra'
+require 'blackevin'
 
-get "/blackevin/token" do
+get '/blackevin/token' do
   halt 401 unless current_user
 
   content_type :json
-  Blackevin.rest.auth.create_token_request(client_id: current_user.id).to_json
+  Blackevin::Rest::Auth.new.create_token_request(client_id: current_user.id).to_json
 end
 ```
 
@@ -99,24 +139,24 @@ and answers who is asking; `nil` is a 401.
 
 ```ruby
 TOKENS = Blackevin::TokenEndpoint.new do |env|
-  user = env["warden"]&.user
+  user = env['warden']&.user
 
   next unless user
 
   {client_id: user.id, capability: {"team:#{user.team_id}" => %w[subscribe publish]}}
 end
 
-# Hanami:  mount TOKENS, at: "/blackevin/token"
-# Rails:   mount TOKENS, at: "/blackevin/token"
-# Rack:    map("/blackevin/token") { run TOKENS }
+# Hanami:  mount TOKENS, at: '/blackevin/token'
+# Rails:   mount TOKENS, at: '/blackevin/token'
+# Rack:    map('/blackevin/token') { run TOKENS }
 ```
 
 ## Publish
 
 ```ruby
-channel = Blackevin.rest.channels.get("orders:#{order.id}")
+channel = Blackevin::Rest::Channel.new("orders:#{order.id}")
 
-channel.publish("status", {state: "shipped"})
+channel.publish('status', {state: 'shipped'})
 ```
 
 It goes through the same fanout a socket publish does: subscribers, account
@@ -128,7 +168,7 @@ class BlackevinPublishJob < ApplicationJob
   retry_on Blackevin::ConnectionError, wait: :polynomially_longer
 
   def perform(channel, event, data)
-    Blackevin.rest.channels.get(channel).publish(event, data)
+    Blackevin::Rest::Channel.new(channel).publish(event, data)
   end
 end
 ```
@@ -141,15 +181,15 @@ channel.presence.get              # => [Blackevin::PresenceMember]
 channel.presence.history          # => [Blackevin::PresenceEvent]
 
 message = channel.history.first
-message.name        # "status"
-message.data        # {"state" => "shipped"}
+message.name        # 'status'
+message.data        # {'state' => 'shipped'}
 message.time        # a Time; message.timestamp is the wire value, in ms
 ```
 
 ## Sign a user out everywhere
 
 ```ruby
-Blackevin.rest.clients.disconnect(user.id)   # => how many connections were closed
+Blackevin::Rest::Clients.new.disconnect(user.id)   # => how many connections were closed
 ```
 
 ## Queues
@@ -157,10 +197,10 @@ Blackevin.rest.clients.disconnect(user.id)   # => how many connections were clos
 The key needs the `amqp-subscribe` capability. A queue is addressed by its `id`.
 
 ```ruby
-queues = Blackevin.rest.queues
+queues = Blackevin::Rest::Queues.new
 
-queue = queues.upsert(name: "inbox", max_length: 10_000)
-queues.add_rule(queue.id, source_pattern: "orders:*")
+queue = queues.upsert(name: 'inbox', max_length: 10_000)
+queues.add_rule(queue.id, source_pattern: 'orders:*')
 
 queues.update(queue.id, enabled: false)   # pause
 queues.list(all: true)                    # paused ones included
@@ -173,10 +213,10 @@ One rescue covers everything the SDK raises:
 
 ```ruby
 begin
-  channel.publish("status", payload)
+  channel.publish('status', payload)
 rescue Blackevin::Error => error
   error.status_code   # 403, 429, … or nil when no response arrived
-  error.reason        # "queue_limit", "connection_limit", or nil
+  error.reason        # 'queue_limit', 'connection_limit', or nil
   error.quota?        # a plan ceiling — show an upgrade prompt, retry later
   error.message       # the server's own sentence; do not branch on it
 end
@@ -188,7 +228,7 @@ rescue can branch by shape:
 ```ruby
 rescue Blackevin::Error => error
   case error
-  in {reason: "queue_limit"} then redirect_to upgrade_path
+  in {reason: 'queue_limit'} then redirect_to upgrade_path
   in {status_code: 401 | 403} then raise
   in {status_code: nil} then retry_job wait: 30.seconds
   end
@@ -202,21 +242,25 @@ rescue Blackevin::Error => error
 A token instead of a key restricts the client to that token's capability:
 
 ```ruby
-details = Blackevin.rest.auth.request_token(
-  Blackevin.rest.auth.create_token_request(client_id: "worker-1", capability: {"jobs:*" => %w[publish]})
+auth = Blackevin::Rest::Auth.new
+
+details = auth.request_token(
+  auth.create_token_request(client_id: 'worker-1', capability: {'jobs:*' => %w[publish]})
 )
 
-Blackevin::Rest.new(token: details.token).channels.get("jobs:1").publish("done")
+worker = Blackevin::Rest.new(token: details.token)
+
+Blackevin::Rest::Channel.new('jobs:1', client: worker).publish('done')
 ```
 
 ## Testing your app
 
-Swap the transport and nothing leaves the process:
+Swap the default transport and no `Blackevin::Rest` leaves the process:
 
 ```ruby
 Blackevin.configure do |config|
-  config.key = "secret.test"
-  config.transport = ->(request) { Blackevin::Response.new(status: 200, body: "{}") }
+  config.key = 'secret.test'
+  config.transport = ->(request) { Blackevin::Response.new(status: 200, body: '{}') }
 end
 ```
 
@@ -225,6 +269,7 @@ end
 ```sh
 bundle install
 bundle exec rake            # rspec + rubocop (Standard rules, single quotes)
+bundle exec rake coverage        # SimpleCov: report in coverage/index.html, fails under the floor
 bundle exec rake contract:sync   # refresh spec/contract from ../blackevin/spec
 ```
 
@@ -236,7 +281,7 @@ Bump `lib/blackevin/version.rb`, add the entry to `CHANGELOG.md`, commit, then:
 bundle exec rake tag   # tags vX.Y.Z from version.rb and pushes it
 ```
 
-The tag runs `.github/workflows/release.yml`: lint, tests, publish to RubyGems by
+The tag runs `.github/workflows/release.yml`: tests, publish to RubyGems by
 Trusted Publishing (no API key), and a GitHub release with the `.gem` attached.
 
 `spec/contract` is a copy of the language-neutral contract — an OpenAPI file and

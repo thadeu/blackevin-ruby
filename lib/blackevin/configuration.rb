@@ -1,14 +1,15 @@
 # frozen_string_literal: true
 
 module Blackevin
-  # Process-wide defaults for {Blackevin.rest}.
+  # The defaults a new {Blackevin::Rest} starts from. An argument given to
+  # +Rest.new+ wins over these, and these win over the environment.
   #
   #   Blackevin.configure do |config|
   #     config.key = ENV.fetch("BLACKEVIN_KEY")
   #   end
   #
   # Nothing here is required: with +BLACKEVIN_KEY+ in the environment,
-  # {Blackevin.rest} works unconfigured.
+  # +Blackevin::Rest.new+ works unconfigured.
   class Configuration
     ENV_KEY = 'BLACKEVIN_KEY'
 
@@ -33,17 +34,5 @@ module Blackevin
     end
 
     def key = @key || ENV[ENV_KEY]
-
-    # @return [Hash] the options {Blackevin::Rest.new} takes
-    def to_rest_options
-      {
-        key: key,
-        rest_endpoint: rest_endpoint,
-        endpoint: endpoint,
-        open_timeout: open_timeout,
-        read_timeout: read_timeout,
-        transport: transport
-      }
-    end
   end
 end

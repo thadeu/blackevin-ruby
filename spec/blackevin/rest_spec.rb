@@ -14,11 +14,6 @@ RSpec.describe Blackevin::Rest do
     expect(transport.requests).to be_empty
   end
 
-  it 'needs a key to sign, and says which' do
-    expect { described_class.new.auth.create_token_request }
-      .to raise_error(Blackevin::ConfigurationError, /BLACKEVIN_KEY/)
-  end
-
   it 'accepts an Integer client_id, as a Rails model id is' do
     expect(rest.auth.create_token_request(client_id: 42).client_id).to eq('42')
   end

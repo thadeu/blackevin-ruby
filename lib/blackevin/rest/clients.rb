@@ -4,8 +4,9 @@ module Blackevin
   class Rest
     # Acting on connected clients.
     class Clients
-      def initialize(rest)
-        @rest = rest
+      # @param client [Blackevin::Rest, nil] default: a new one, from the configuration
+      def initialize(client: nil)
+        @client = Rest.resolve(client)
       end
 
       # Closes every connection a client holds — for signing a user out
@@ -21,7 +22,7 @@ module Blackevin
 
         path = "/api/clients/#{Rest.escape(client_id)}/connections/close"
 
-        @rest.request('disconnect', 'POST', path)['closed'].to_i
+        @client.request('disconnect', 'POST', path)['closed'].to_i
       end
     end
   end

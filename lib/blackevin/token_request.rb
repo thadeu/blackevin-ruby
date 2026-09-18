@@ -9,7 +9,7 @@ module Blackevin
   #
   # Serialises to the wire shape, so a controller can render it as is:
   #
-  #   render json: Blackevin.rest.auth.create_token_request(client_id: current_user.id)
+  #   render json: Blackevin::Rest.new.auth.create_token_request(client_id: current_user.id)
   class TokenRequest
     # The field ORDER and the newline after each are the wire contract. The node
     # recomputes exactly this text to verify, and a reordering breaks every

@@ -7,15 +7,16 @@ module Blackevin
     # A queue is addressed by its id, never its name: the name is the physical
     # queue on the broker, so a 404 must mean "no such queue".
     class Queues
-      def initialize(rest)
-        @rest = rest
+      # @param client [Blackevin::Rest, nil] default: a new one, from the configuration
+      def initialize(client: nil)
+        @client = Rest.resolve(client)
       end
 
       # @param all [Boolean] include paused queues
       # @return [Array<Blackevin::Queue>]
       # @raise [Blackevin::Error]
       def list(all: false)
-        body = @rest.request('list queues', 'GET', '/api/queues', query: all ? {'all' => '1'} : nil)
+        body = @client.request('list queues', 'GET', '/api/queues', query: all ? {'all' => '1'} : nil)
 
         Array(body['queues']).map { Queue.from_h(_1) }
       end
@@ -32,7 +33,7 @@ module Blackevin
         body = {'name' => name.to_s, 'enabled' => enabled}
         body['maxLength'] = max_length unless max_length.nil?
 
-        Queue.from_h(@rest.request('upsert queue', 'POST', '/api/queues', body: body).fetch('queue'))
+        Queue.from_h(@client.request('upsert queue', 'POST', '/api/queues', body: body).fetch('queue'))
       end
 
       alias_method :create, :upsert
@@ -54,7 +55,7 @@ module Blackevin
         body['enabled'] = changes[:enabled] if changes.key?(:enabled)
         body['maxLength'] = changes[:max_length] if changes.key?(:max_length)
 
-        Queue.from_h(@rest.request('update queue', 'PATCH', queue_path(id), body: body).fetch('queue'))
+        Queue.from_h(@client.request('update queue', 'PATCH', queue_path(id), body: body).fetch('queue'))
       end
 
       # Deletes the queue and whatever is waiting in it.
@@ -63,14 +64,14 @@ module Blackevin
       # @return [String] the name of the deleted queue
       # @raise [Blackevin::Error]
       def delete(id)
-        @rest.request('delete queue', 'DELETE', queue_path(id))['deleted']
+        @client.request('delete queue', 'DELETE', queue_path(id))['deleted']
       end
 
       # @param id [String] the queue's id
       # @return [Array<Blackevin::QueueRule>]
       # @raise [Blackevin::Error]
       def rules(id)
-        body = @rest.request('list queue rules', 'GET', "#{queue_path(id)}/rules")
+        body = @client.request('list queue rules', 'GET', "#{queue_path(id)}/rules")
 
         Array(body['rules']).map { QueueRule.from_h(_1) }
       end
@@ -86,7 +87,7 @@ module Blackevin
         body = {'sourcePattern' => source_pattern.to_s}
         body['filter'] = filter unless filter.nil?
 
-        QueueRule.from_h(@rest.request('add queue rule', 'POST', "#{queue_path(id)}/rules", body: body).fetch('rule'))
+        QueueRule.from_h(@client.request('add queue rule', 'POST', "#{queue_path(id)}/rules", body: body).fetch('rule'))
       end
 
       # Stops the copies at the source. Messages already enqueued stay.
@@ -96,7 +97,7 @@ module Blackevin
       # @return [true]
       # @raise [Blackevin::Error]
       def delete_rule(id, rule_id)
-        @rest.request('delete queue rule', 'DELETE', "#{queue_path(id)}/rules/#{Rest.escape(rule_id)}")
+        @client.request('delete queue rule', 'DELETE', "#{queue_path(id)}/rules/#{Rest.escape(rule_id)}")
 
         true
       end

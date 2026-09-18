@@ -10,6 +10,11 @@ RuboCop::RakeTask.new(:lint)
 
 task default: %i[spec lint]
 
+desc 'Run the suite under SimpleCov: HTML report in coverage/, fails under 100% lines or 95% branches'
+task :coverage do
+  sh({'COVERAGE' => '1'}, 'bundle exec rspec')
+end
+
 namespace :contract do
   desc 'Copy the language-neutral contract from the Blackevin monorepo (BLACKEVIN_SPEC_DIR, default ../blackevin/spec)'
   task :sync do

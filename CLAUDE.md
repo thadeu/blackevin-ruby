@@ -15,6 +15,7 @@ ships into other people's applications.
 - **The contract decides.** `spec/contract` is copied from the monorepo's `spec/`
   (`rake contract:sync`). Never edit it here. If a fixture fails, the gem is
   wrong — or the contract changes upstream first.
+- **Instances only.** No process-wide client, no class method that reaches the network (`Blackevin.rest` was removed in 0.2.0 on purpose). `Blackevin.configure` stores defaults and nothing else; `Blackevin::Rest.new` reads them. Do not add module-level delegators like `Blackevin.channels`. Every resource class under `Blackevin::Rest::` takes `client: nil` and resolves it with `Rest.resolve`; keep them under `Rest::` (a future realtime client has different channels), one class per file, path mirroring the namespace.
 - **Breaking a signature breaks someone's build.** Add, deprecate, then remove.
 - **Never let a secret or a token reach `inspect`.**
 - **Errors are the product.** Everything raised is a `Blackevin::Error`; the message
@@ -44,7 +45,7 @@ docker run --rm -v "$PWD":/src:ro ruby:3.0 bash -c \
 Ruby Standard Style plus one house rule: **single quotes, double only for
 interpolation or an escape**. Standard refuses to have a rule overridden, so the
 linter is RuboCop running Standard's ruleset with that one exception — see
-`.rubocop.yml`. `bundle exec rubocop` to lint, `-a` to fix. There is no
+`.rubocop.yml`. `bundle exec rubocop` to lint, `-a` to fix. **Lint runs locally only** (`bundle exec rake` does spec + lint). It is deliberately absent from CI and from the release workflow: a quote style must never fail a build or block a release. Do not add it back. There is no
 `.standard.yml` and nothing runs `standardrb`: it would demand double quotes.
 Editors format through the same `.rubocop.yml`, so save and CI cannot disagree.
 Add no other rule to that file. Blank lines between blocks of different

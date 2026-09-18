@@ -29,7 +29,8 @@ module Blackevin
       'cache-control' => 'no-store'
     }.freeze
 
-    # @param rest [Blackevin::Rest, nil] defaults to {Blackevin.rest}, resolved per request
+    # @param rest [Blackevin::Rest, nil] defaults to a new {Blackevin::Rest} per request, which
+    #   picks up whatever {Blackevin.configure} holds at that moment
     # @yieldparam env [Hash] the Rack env
     # @yieldreturn [Hash, nil] keyword arguments for +create_token_request+, or nil to answer 401
     def initialize(rest: nil, &identify)
@@ -50,7 +51,7 @@ module Blackevin
       in nil | false
         respond(401, {'error' => 'unauthorized'})
       in Hash => params
-        respond(200, (@rest || Blackevin.rest).auth.create_token_request(**params.transform_keys(&:to_sym)).to_h)
+        respond(200, (@rest || Rest.new).auth.create_token_request(**params.transform_keys(&:to_sym)).to_h)
       in other
         raise ConfigurationError, "the TokenEndpoint block must return a Hash or nil, got #{other.class}"
       end

@@ -11,6 +11,8 @@ require_relative 'blackevin/transport'
 require_relative 'blackevin/configuration'
 require_relative 'blackevin/rest'
 require_relative 'blackevin/rest/auth'
+require_relative 'blackevin/rest/presence'
+require_relative 'blackevin/rest/channel'
 require_relative 'blackevin/rest/channels'
 require_relative 'blackevin/rest/clients'
 require_relative 'blackevin/rest/queues'
@@ -19,9 +21,12 @@ require_relative 'blackevin/token_endpoint'
 # Server-side SDK for Blackevin: sign token requests, publish, read history and
 # presence, manage queues. Standard library only.
 #
-#   Blackevin.configure { |config| config.key = ENV.fetch("BLACKEVIN_KEY") }
+#   bk = Blackevin::Rest.new
 #
-#   Blackevin.rest.channels.get("room:42").publish("greeting", {text: "hi"})
+#   bk.channels.get('room:42').publish('greeting', {text: 'hi'})
+#
+# There is no process-wide client. {Blackevin.configure} only holds the defaults
+# a new {Blackevin::Rest} starts from.
 module Blackevin
   @mutex = Mutex.new
 
@@ -31,31 +36,20 @@ module Blackevin
       @mutex.synchronize { @configuration ||= Configuration.new }
     end
 
+    # Sets the defaults every later {Blackevin::Rest.new} starts from. It builds
+    # nothing and calls nothing: a client already created keeps what it was given.
+    #
     # @yieldparam config [Blackevin::Configuration]
     # @return [Blackevin::Configuration]
     def configure
       yield configuration
 
-      @mutex.synchronize { @rest = nil }
-
       configuration
     end
 
-    # The process-wide client, built from {configuration} on first use.
-    #
-    # @return [Blackevin::Rest]
-    def rest
-      options = configuration.to_rest_options
-
-      @mutex.synchronize { @rest ||= Rest.new(**options) }
-    end
-
-    # Forgets the configuration and the client. For test suites.
+    # Forgets the configuration. For test suites.
     def reset!
-      @mutex.synchronize do
-        @configuration = nil
-        @rest = nil
-      end
+      @mutex.synchronize { @configuration = nil }
     end
   end
 end

@@ -43,7 +43,7 @@ RSpec.describe Blackevin::TokenEndpoint do
     expect(headers['allow']).to eq('GET, POST')
   end
 
-  it 'falls back to Blackevin.rest, resolved per request' do
+  it 'builds a Blackevin::Rest per request when none is given, so late configuration is seen' do
     endpoint = described_class.new { {client_id: 'bob'} }
 
     Blackevin.configure { |config| config.key = 'secret.late' }
